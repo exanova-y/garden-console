@@ -53,8 +53,11 @@ corepack pnpm worker:dev
 2. Identity: hardened account system — register, login, sessions, idle
    timeout, TOTP, profile/password/delete, D1-backed rate limit, CORS locked
    to the console origin, no plaintext secret fallback. Passkey endpoints
-   stubbed for stage 3. ✓
-3. Vault: fail-closed encrypted backup and restore; passkey registration.
+   now active. ✓
+3. Vault: fail-closed encrypted backup CRUD, PBKDF2/AES-GCM client crypto, and
+   WebAuthn passkey registration/assertion routes. ✓
+4. Health: interventions, observations, models, and timeline.
+5. Reading: curated speed dial, then RSS ingestion.
 
 Pause after each stage, verify it, and update this file in the fewest useful
 touches.

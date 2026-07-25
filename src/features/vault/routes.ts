@@ -1,9 +1,8 @@
-import { SignJWT, jwtVerify } from 'jose'
+import { jwtVerify } from 'jose'
 import {
   validateJWTSecret,
   SESSION_IDLE_TIMEOUT_SECONDS,
 } from '../identity/validation'
-import { checkRateLimit } from '../identity/rate-limit'
 import type { Env } from '../../server/env'
 
 interface VerifiedPayload {
@@ -150,30 +149,20 @@ export async function verifyAuth(
   return { ok: true, payload, userId }
 }
 
-async function clientIp(request: Request): Promise<string | null> {
-  return (
-    request.headers.get('CF-Connecting-IP') ??
-    request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() ??
-    request.headers.get('X-Real-IP') ??
-    null
-  )
-}
-
-async function signToken(
-  env: Env,
-  payload: Record<string, unknown>,
-  expiresIn: string,
-): Promise<string> {
-  const secret = new TextEncoder().encode(jwtSecret(env))
-  return await new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuedAt()
-    .setExpirationTime(expiresIn)
-    .sign(secret)
-}
-
 const MAX_BACKUPS = 10
 const MAX_DATA_SIZE = 2_000_000 // D1 max row size is 2 MB
+
+function isEncryptedEnvelope(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) return false
+  const candidate = value as Record<string, unknown>
+  return (
+    candidate.v === 1 &&
+    typeof candidate.iv === 'string' &&
+    /^[A-Za-z0-9+/]+=*$/.test(candidate.iv) &&
+    typeof candidate.data === 'string' &&
+    /^[A-Za-z0-9+/]+=*$/.test(candidate.data)
+  )
+}
 
 export async function handleVault(
   request: Request,
@@ -227,6 +216,12 @@ export async function handleVault(
       }
       if (!body.data)
         return withCors(env, request, json('Missing data', { status: 400 }))
+      if (!isEncryptedEnvelope(body.data))
+        return withCors(
+          env,
+          request,
+          json('Encrypted backup envelope required', { status: 415 }),
+        )
       const serialized = JSON.stringify(body.data)
       if (serialized.length > MAX_DATA_SIZE)
         return withCors(

@@ -256,15 +256,6 @@ export async function handleIdentity(
     case '/api/auth/totp-verify':
       if (request.method === 'POST') return await totpVerify(request, env, ctx)
       break
-    case '/api/auth/passkey-options':
-    case '/api/auth/passkey-verify':
-      return withCors(
-        env,
-        request,
-        json('Passkey support arrives in stage 3 (vault).', {
-          status: 501,
-        }),
-      )
   }
   return withCors(env, request, json('Not found', { status: 404 }))
 }
@@ -385,7 +376,8 @@ async function login(request: Request, env: Env): Promise<Response> {
   if (!user || !passwordValid)
     return withCors(env, request, json('Invalid credentials', { status: 401 }))
 
-  // 2FA: TOTP gate. Passkey-only accounts return 501 here until stage 3.
+  // 2FA: TOTP gate. Passkey-only accounts complete the challenge in the
+  // public WebAuthn routes.
   if (user.totp_secret) {
     if (!totp_code && !backup_code)
       return withCors(

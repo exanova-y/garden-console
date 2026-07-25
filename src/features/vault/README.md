@@ -32,8 +32,10 @@ health-data service this is unacceptable. The vault module enforces:
 256-bit AES-GCM key.
 
 `encryptCloudPayload(plaintext, keyBase64)` / `decryptCloudPayload(envelope,
-keyBase64)` — AES-GCM with random IV. The envelope is `{ v: 1, iv, salt,
-data }`.
+keyBase64)` — AES-GCM with a random IV. The envelope is `{ v: 1, iv, data }`.
+
+The Worker validates this envelope shape and rejects plaintext payloads with
+`415`, so fail-closed behavior does not depend on the frontend alone.
 
 The key is cached in `localStorage['enc_key']` only after it has successfully
 decrypted a backup, so a wrong password never poisons future saves.

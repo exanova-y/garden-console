@@ -7,8 +7,7 @@ hardened:
 - CORS is restricted to the console origin (`ALLOWED_ORIGIN`), not `*`.
 - Rate limits are D1-backed so they hold across Worker isolates.
 - Sessions carry an idle timeout; a stolen token on a dormant account is revoked.
-- TOTP (RFC 6238) is implemented; passkey registration/verification is stubbed
-  for stage 3 (vault) and returns `501` until then.
+- TOTP (RFC 6238) and passkey registration/assertion are implemented.
 
 Routes:
 
@@ -22,5 +21,5 @@ Routes:
 - `DELETE /api/user/me`
 - `POST /api/auth/totp-setup` (issue secret)
 - `POST /api/auth/totp-verify` (enable)
-- `POST /api/auth/passkey-options` → `501`
-- `POST /api/auth/passkey-verify` → `501`
+- `POST /api/auth/passkey-options`
+- `POST /api/auth/passkey-verify`

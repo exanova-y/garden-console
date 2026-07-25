@@ -1,5 +1,6 @@
 import { verifyAuth } from './routes'
 import { checkRateLimit } from '../identity/rate-limit'
+import { validateJWTSecret } from '../identity/validation'
 import type { Env } from '../../server/env'
 
 // --- Minimal CBOR decoder (covers WebAuthn EC P-256 COSE keys) ---
@@ -79,7 +80,10 @@ function b64urlDecode(s: string): Uint8Array<ArrayBuffer> {
 }
 
 function buf(u: Uint8Array): ArrayBuffer {
-  return u.buffer.slice(u.byteOffset, u.byteOffset + u.byteLength) as ArrayBuffer
+  return u.buffer.slice(
+    u.byteOffset,
+    u.byteOffset + u.byteLength,
+  ) as ArrayBuffer
 }
 
 function b64urlEncode(bytes: Uint8Array): string {
@@ -201,8 +205,8 @@ async function verifyPasskeyAssertion(
   const valid = await crypto.subtle.verify(
     { name: 'ECDSA', hash: 'SHA-256' },
     cryptoKey,
-    rawSig,
-    sigBase,
+    buf(rawSig),
+    buf(sigBase),
   )
   if (!valid) throw new Error('Signature invalid')
   if (storedCounter > 0 && signCount > 0 && storedCounter >= signCount)
@@ -280,7 +284,7 @@ export async function handlePasskeys(
     return withCors(env, request, new Response(null, { status: 204 }))
 
   await ensurePasskeys(env)
-  const secret = new TextEncoder().encode(env.JWT_SECRET)
+  const secret = new TextEncoder().encode(validateJWTSecret(env.JWT_SECRET))
 
   // --- Registration: begin ---
 
@@ -403,9 +407,22 @@ export async function handlePasskeys(
       if (clientData.origin !== expectedOrigin)
         throw new Error('Origin mismatch')
 
-      const authData = b64urlDecode(credential.response.attestationObject)
+      const attestation = decodeCBOR(
+        b64urlDecode(credential.response.attestationObject),
+      )
+      const authData = attestation.authData as Uint8Array
+      if (!(authData instanceof Uint8Array))
+        throw new Error('Missing authenticator data')
       const { flags, signCount, credentialId, publicKeyX, publicKeyY } =
         parseAuthData(authData)
+      const rpHash = new Uint8Array(
+        await crypto.subtle.digest(
+          'SHA-256',
+          buf(new TextEncoder().encode(expectedRpId)),
+        ),
+      )
+      if (!rpHash.every((value, index) => value === authData[index]))
+        throw new Error('RP ID mismatch')
       if (!(flags & 0x40))
         throw new Error('Attested credential data not present')
       if (!credentialId || !publicKeyX || !publicKeyY)
