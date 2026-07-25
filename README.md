@@ -32,7 +32,7 @@ Concerta 18 mg, and NAC 600 mg models expose genuine common structure.
 
 The interface inherits the public site's `#0f1228` ground, `#c6d0f5` text,
 turquoise/green/lavender one-pixel boxes, square corners, and monospace labels.
-The DJMAX Respect V wallpaper and a low-speed Paper grain gradient provide the
+The DJMAX Respect V wallpaper and a low-speed Paper grain gradient from "shaders.paper.design" provide the
 background field. Product language stays short and operational.
 
 ## Commands
@@ -54,10 +54,17 @@ corepack pnpm worker:dev
    timeout, TOTP, profile/password/delete, D1-backed rate limit, CORS locked
    to the console origin, no plaintext secret fallback. Passkey endpoints
    now active. ✓
-3. Vault: fail-closed encrypted backup CRUD, PBKDF2/AES-GCM client crypto, and
+3. Vault: fail-closed encrypted backup CRUD, PBKDF2/AES-GCM client crypto (server does not see plaintext unlike upstream hrt tracker.), and
    WebAuthn passkey registration/assertion routes. ✓
-4. Health: interventions, observations, models, and timeline.
+4. Health: optional-login local-first HRT/medication interventions, a dedicated
+   mood tab, encrypted sync, and a shared timeline. HRT curves use the
+   vendored kernel from `https://hrt.mahiro.uk`; NAC calibration follows after
+   that.
 5. Reading: curated speed dial, then RSS ingestion.
 
 Pause after each stage, verify it, and update this file in the fewest useful
 touches.
+
+### Privacy statement
+
+In guest mode, data is saved in localStorage lasting indefinitely until you manually clear browser site data. upon login, information is encrypted via aes-256 prior to sending to a cloudflare server

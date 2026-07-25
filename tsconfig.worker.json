@@ -11,5 +11,13 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src/server", "src/features/identity", "src/features/vault"]
+  "include": [
+    "src/server",
+    "src/features/identity/index.ts",
+    "src/features/identity/routes.ts",
+    "src/features/identity/validation.ts",
+    "src/features/identity/totp.ts",
+    "src/features/identity/rate-limit.ts",
+    "src/features/vault"
+  ]
 }
