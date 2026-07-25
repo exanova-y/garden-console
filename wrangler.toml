@@ -1,0 +1,26 @@
+name = "garden-console"
+main = "src/server/worker.ts"
+compatibility_date = "2026-07-25"
+
+[assets]
+binding = "ASSETS"
+directory = "./dist"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+[observability]
+enabled = true
+head_sampling_rate = 0.1
+
+# Required secrets (set via `wrangler secret put <NAME>` once 1Password CLI or
+# the Cloudflare dashboard is available):
+#   JWT_SECRET       — random >= 32 chars
+#   ALLOWED_ORIGIN   — e.g. https://app.adiabatic.garden
+#   ADMIN_USERNAME   — optional
+#   ADMIN_PASSWORD   — optional, set together with ADMIN_USERNAME
+
+[[d1_databases]]
+binding = "DB"
+database_name = "garden-console"
+database_id = "replace-with-wrangler-d1-create-output"
+migrations_dir = "migrations"

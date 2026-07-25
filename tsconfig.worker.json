@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "typeRoots": ["./node_modules/@types", "./node_modules/@cloudflare"],
+    "types": ["workers-types", "node"],
+    "lib": ["ES2022", "WebWorker"],
+    "composite": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["src/server", "src/features/identity", "src/features/vault"]
+}

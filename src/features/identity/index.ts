@@ -1,0 +1,1 @@
+export { handleIdentity } from './routes'
