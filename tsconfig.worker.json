@@ -18,6 +18,10 @@
     "src/features/identity/validation.ts",
     "src/features/identity/totp.ts",
     "src/features/identity/rate-limit.ts",
-    "src/features/vault"
+    "src/features/vault",
+    "src/features/reading/index.ts",
+    "src/features/reading/routes.ts",
+    "src/features/reading/server-crypto.ts",
+    "src/features/reading/types.ts"
   ]
 }

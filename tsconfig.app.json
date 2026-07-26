@@ -19,6 +19,10 @@
   "include": [
     "src/app",
     "src/features/health",
+    "src/features/reading/ReadingConsole.tsx",
+    "src/features/reading/client.ts",
+    "src/features/reading/interests.ts",
+    "src/features/reading/types.ts",
     "src/features/identity/AuthGate.tsx",
     "src/features/identity/client.ts",
     "src/features/vault/crypto.ts",

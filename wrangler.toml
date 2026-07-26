@@ -18,6 +18,12 @@ head_sampling_rate = 0.1
 #   ALLOWED_ORIGIN   — e.g. https://app.adiabatic.garden
 #   ADMIN_USERNAME   — optional
 #   ADMIN_PASSWORD   — optional, set together with ADMIN_USERNAME
+#   CONNECTOR_ENCRYPTION_KEY — random >= 32 chars, encrypts OAuth tokens in D1
+#   GOOGLE_CLIENT_SECRET
+#   FEEDLY_CLIENT_SECRET
+
+[triggers]
+crons = ["*/30 * * * *"]
 
 [[d1_databases]]
 binding = "DB"

@@ -210,7 +210,6 @@ export function HealthConsole({
         <div>
           <p className="section-label">[ health: work in progress]</p>
           <h1 className="console-title">hrt / meds / mood</h1>
-          
         </div>
         <div className="sync-actions">
           <span className={`sync-state sync-${syncState}`}>
@@ -265,7 +264,7 @@ export function HealthConsole({
         <HistoryPage timeline={timeline} removeEntry={removeEntry} />
       )}
 
-      {page === 'calibration' && <CalibrationPage doses={snapshot.doses} />}
+      {page === 'calibration' && <CalibrationPage />}
 
       {page === 'mood' && (
         <MoodPage
@@ -362,11 +361,7 @@ function TimelineEntry({
   )
 }
 
-function CalibrationPage({ doses }: { doses: DoseEvent[] }) {
-  const hasHrt = doses.some(
-    (dose) =>
-      dose.medication === 'estradiol' || dose.medication === 'testosterone',
-  )
+function CalibrationPage() {
   return (
     <div className="calibration-grid">
       <article className="box calibration-card form-green">
@@ -376,9 +371,14 @@ function CalibrationPage({ doses }: { doses: DoseEvent[] }) {
           {hasHrt ? 'events present' : 'waiting for events'}
         </p> */}
         <p className="muted">
-          estradiol, testosterone and CPA exponential decay models + interaction logic from hrt.mahiro.uk.
+          estradiol, testosterone and CPA exponential decay models + interaction
+          logic from hrt.mahiro.uk.
         </p>
-        <a href="https://github.com/LaoZhong-Mihari/HRT-Recorder-online" target="_blank" rel="noreferrer">
+        <a
+          href="https://github.com/LaoZhong-Mihari/HRT-Recorder-online"
+          target="_blank"
+          rel="noreferrer"
+        >
           upstream repo
         </a>
       </article>
@@ -386,15 +386,18 @@ function CalibrationPage({ doses }: { doses: DoseEvent[] }) {
         <p className="section-label">[ concerta ]</p>
         <h2>population curve</h2>
         {/* <p className="calibration-state">label anchored</p> */}
-        <p className="muted">22% immediate plus 78% osmotic Bateman model, with peaks around
-2.5 h and 7 h in a 24-hour visualization. The dose selector permits 18 mg
-plus 9 mg increments</p>
+        <p className="muted">
+          22% immediate plus 78% osmotic Bateman model, with peaks around 2.5 h
+          and 7 h in a 24-hour visualization. The dose selector permits 18 mg
+          plus 9 mg increments
+        </p>
       </article>
       <article className="box calibration-card form-lavender">
         <p className="section-label">[ nac ]</p>
         {/* <h2>not calibrated</h2> */}
         <p className="muted">
-          using simple exponential decay model with half life of 6.25h for oral administration
+          using simple exponential decay model with half life of 6.25h for oral
+          administration
         </p>
       </article>
     </div>

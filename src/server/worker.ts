@@ -1,6 +1,7 @@
 import type { Env } from './env'
 import { handleIdentity } from '../features/identity'
 import { handleVault, handlePasskeys } from '../features/vault'
+import { handleReading, refreshReading } from '../features/reading'
 
 function json(data: unknown, init?: ResponseInit): Response {
   const headers = new Headers(init?.headers)
@@ -38,6 +39,9 @@ export default {
     if (path === '/api/health' && request.method === 'GET')
       return json({ status: 'ok', service: 'garden-console' })
 
+    if (path.startsWith('/api/reading/'))
+      return handleReading(request, env, ctx)
+
     // Identity routes (register, login, session, logout, user/*).
     if (
       IDENTITY_PATHS.has(path) ||
@@ -61,5 +65,8 @@ export default {
       return json({ error: 'Not found' }, { status: 404 })
 
     return env.ASSETS.fetch(request)
+  },
+  async scheduled(_controller, env, ctx): Promise<void> {
+    ctx.waitUntil(refreshReading(env))
   },
 } satisfies ExportedHandler<Env>
