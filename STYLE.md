@@ -1,4 +1,4 @@
-# Garden Console Style
+# Peacesign Style
 
 This project follows the virtues in `../garden/STYLE.md`.
 

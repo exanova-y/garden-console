@@ -1,4 +1,4 @@
-name = "garden-console"
+name = "peacesign"
 main = "src/server/worker.ts"
 compatibility_date = "2026-07-25"
 
@@ -28,5 +28,5 @@ crons = ["*/30 * * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "garden-console"
-database_id = "replace-with-wrangler-d1-create-output"
+database_id = "897a7c23-9ddb-496e-b11e-b14376b17072"
 migrations_dir = "migrations"

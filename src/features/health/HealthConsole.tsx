@@ -208,12 +208,12 @@ export function HealthConsole({
     <section className="health-console">
       <div className="console-toolbar">
         <div>
-          <p className="section-label">[ health: work in progress]</p>
-          <h1 className="console-title">hrt / meds / mood</h1>
+          {/* <p className="section-label">[ health: work in progress]</p> */}
+          <h1 className="console-title">hrt / meds </h1>
         </div>
         <div className="sync-actions">
           <span className={`sync-state sync-${syncState}`}>
-            {guest ? 'guest / local' : syncState}
+            {guest ? 'guest' : syncState}
           </span>
           <button
             className="button button-quiet"

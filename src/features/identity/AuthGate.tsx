@@ -176,7 +176,7 @@ function AuthPanel({
   return (
     <main className="auth-shell">
       <section className="box auth-card">
-        <p className="section-label">[ garden console ]</p>
+        <p className="section-label">[ peacesign ]</p>
         <h1>{mode === 'login' ? 'login' : 'register'}</h1>
         <p className="muted">
           health records stay local until you save an encrypted backup.

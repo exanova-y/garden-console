@@ -264,7 +264,7 @@ export function ReadingConsole() {
         <header className="reading-sidebar-head">
           <div>
             <p className="section-label">[ stream ]</p>
-            <h1>information</h1>
+            <h1>information (work in progress, doesn't work)</h1>
           </div>
           <button
             className="icon-button"

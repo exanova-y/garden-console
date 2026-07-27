@@ -107,7 +107,7 @@ a:hover {
   z-index: -3;
   background-position: center;
   background-repeat: no-repeat;
-  background-size: 100%; /* full width, natural aspect ratio */
+  background-size: cover;
   filter: saturate(0.82) contrast(1.08);
 }
 

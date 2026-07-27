@@ -13,6 +13,5 @@ export const INTEREST_TAGS = [
   'olfaction',
   'biosensing',
   'hard science fiction',
-  'artificial life',
   'complex systems',
 ]
