@@ -1,6 +1,6 @@
-# Garden Console
+# Peacesign
 
-One account for personal health, mood, and reading tools at `app.adiabatic.garden`.
+Tracking HRT, meds, mood and an infovore news aggregator at `peacesign.adiabatic.garden`.
 
 The console is a Vite/React application served by a Cloudflare Worker. D1 will
 hold identity, encrypted vault metadata, and shared feed data; R2 will hold
