@@ -1,45 +1,222 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react'
 import {
   beginConnector,
+  loadCommunitySources,
   loadConnectorStatus,
-  loadReadingItems,
   refreshReading,
 } from './client'
-import { INTEREST_TAGS } from './interests'
-import type { ConnectorStatus, ReadingItem, ReadingProvider } from './types'
+import { COMMUNITY_SOURCES } from './catalog'
+import {
+  buildBspLayout,
+  circularIndex,
+  filterCommunitySources,
+  moveSource,
+  sanitizeSourceIds,
+  type BspNode,
+} from './reader-state'
+import {
+  useCommunitySourcePanels,
+  type SourcePanelState,
+} from './useCommunitySourcePanels'
+import type {
+  CommunitySourceDef,
+  ConnectorStatus,
+  ReadingProvider,
+  SourceItem,
+} from './types'
 
-type Split = 'single' | 'columns' | 'rows'
+const SOURCES_STORAGE_KEY = 'peacesign-reading-community-sources'
+const DEFAULT_SOURCE_IDS = ['hackernews']
 
-interface Pane {
-  id: string
-  itemId: string
-}
-
-function itemTags(item: ReadingItem): string[] {
+function savedSourceIds(): string[] {
+  const available = COMMUNITY_SOURCES.map((source) => source.id)
   try {
-    return JSON.parse(item.tags_json) as string[]
+    const value = JSON.parse(
+      localStorage.getItem(SOURCES_STORAGE_KEY) ?? 'null',
+    )
+    return sanitizeSourceIds(value, available, DEFAULT_SOURCE_IDS)
   } catch {
-    return []
+    return DEFAULT_SOURCE_IDS
   }
 }
 
-function rank(item: ReadingItem, seed: number): number {
-  const text =
-    `${item.title} ${item.excerpt ?? ''} ${itemTags(item).join(' ')}`.toLowerCase()
-  const interest = INTEREST_TAGS.reduce(
-    (score, tag) => score + (text.includes(tag) ? 12 : 0),
-    0,
+function formatDate(timestamp: number | null): string {
+  if (!timestamp) return 'date unknown'
+  return new Date(timestamp * 1000).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
+function formatUpdatedAt(timestamp: number | null): string {
+  if (!timestamp) return 'not loaded'
+  return `updated ${new Date(timestamp).toLocaleTimeString(undefined, {
+    hour: '2-digit',
+    minute: '2-digit',
+  })}`
+}
+
+function sourceKey(item: SourceItem, index: number): string {
+  return `${item.url ?? item.title}-${item.published_at ?? index}`
+}
+
+function SourceTile({
+  source,
+  panel,
+  active,
+  activeItemIndex,
+  onActivate,
+  onItemActivate,
+  onRefresh,
+  onRemove,
+}: {
+  source: CommunitySourceDef
+  panel: SourcePanelState
+  active: boolean
+  activeItemIndex: number
+  onActivate: () => void
+  onItemActivate: (index: number) => void
+  onRefresh: () => void
+  onRemove: () => void
+}) {
+  const loading = panel.status === 'loading'
+
+  return (
+    <section
+      className={active ? 'source-tile active' : 'source-tile'}
+      data-source-panel={source.id}
+      onClick={onActivate}
+    >
+      <header className="source-tile-head">
+        <div className="source-tile-title">
+          <span className={`source-kind source-kind-${source.kind}`}>
+            {source.kind}
+          </span>
+          <div>
+            <strong>{source.name}</strong>
+            <small>
+              {source.category} · {panel.items.length} links ·{' '}
+              {formatUpdatedAt(panel.updatedAt)}
+            </small>
+          </div>
+        </div>
+        <div className="source-tile-actions">
+          <button onClick={onRefresh} disabled={loading} title="Refresh source">
+            {loading ? '…' : '↻'}
+          </button>
+          <button onClick={onRemove} title={`Remove ${source.name}`}>
+            ×
+          </button>
+        </div>
+      </header>
+
+      <div className="source-links">
+        {panel.error && (
+          <button className="source-status" onClick={onRefresh}>
+            {panel.error} · retry
+          </button>
+        )}
+        {loading && panel.items.length === 0 ? (
+          <p className="source-status">fetching links…</p>
+        ) : panel.items.length === 0 && !panel.error ? (
+          <p className="source-status">no links returned</p>
+        ) : (
+          panel.items.map((item, index) => (
+            <a
+              className={
+                active && activeItemIndex === index
+                  ? 'source-link active'
+                  : 'source-link'
+              }
+              data-source-id={source.id}
+              data-item-index={index}
+              href={item.url ?? source.homepage}
+              target="_blank"
+              rel="noreferrer"
+              key={sourceKey(item, index)}
+              onClick={() => onItemActivate(index)}
+              onFocus={() => {
+                onActivate()
+                onItemActivate(index)
+              }}
+            >
+              <span>{item.title}</span>
+              <time>{formatDate(item.published_at)}</time>
+            </a>
+          ))
+        )}
+      </div>
+    </section>
   )
-  const ageHours = Math.max(
-    0,
-    (Date.now() / 1000 - (item.published_at ?? item.received_at)) / 3600,
+}
+
+function BspTile({
+  node,
+  definitions,
+  panels,
+  activeSourceId,
+  activeItemBySource,
+  onActivate,
+  onItemActivate,
+  onRefresh,
+  onRemove,
+}: {
+  node: BspNode
+  definitions: Map<string, CommunitySourceDef>
+  panels: Record<string, SourcePanelState>
+  activeSourceId: string | null
+  activeItemBySource: Record<string, number>
+  onActivate: (sourceId: string) => void
+  onItemActivate: (sourceId: string, index: number) => void
+  onRefresh: (sourceId: string) => void
+  onRemove: (sourceId: string) => void
+}) {
+  if (node.kind === 'leaf') {
+    const source = definitions.get(node.sourceId)
+    if (!source) return null
+    return (
+      <SourceTile
+        source={source}
+        panel={
+          panels[node.sourceId] ?? {
+            items: [],
+            status: 'idle',
+            error: null,
+            updatedAt: null,
+          }
+        }
+        active={activeSourceId === node.sourceId}
+        activeItemIndex={activeItemBySource[node.sourceId] ?? 0}
+        onActivate={() => onActivate(node.sourceId)}
+        onItemActivate={(index) => onItemActivate(node.sourceId, index)}
+        onRefresh={() => onRefresh(node.sourceId)}
+        onRemove={() => onRemove(node.sourceId)}
+      />
+    )
+  }
+
+  const childProps = {
+    definitions,
+    panels,
+    activeSourceId,
+    activeItemBySource,
+    onActivate,
+    onItemActivate,
+    onRefresh,
+    onRemove,
+  }
+  return (
+    <div className={`bsp-split bsp-${node.direction}`}>
+      <BspTile node={node.first} {...childProps} />
+      <BspTile node={node.second} {...childProps} />
+    </div>
   )
-  const recency = Math.max(0, 24 - Math.log2(ageHours + 1) * 4)
-  let hash = seed
-  for (const character of item.id)
-    hash = (hash * 31 + character.charCodeAt(0)) | 0
-  const jitter = ((hash >>> 0) % 1000) / 250
-  return interest + recency + jitter
 }
 
 function isTyping(target: EventTarget | null): boolean {
@@ -51,193 +228,191 @@ function isTyping(target: EventTarget | null): boolean {
 }
 
 export function ReadingConsole() {
-  const [items, setItems] = useState<ReadingItem[]>([])
+  const [sourceIds, setSourceIds] = useState(savedSourceIds)
+  const [catalog, setCatalog] =
+    useState<CommunitySourceDef[]>(COMMUNITY_SOURCES)
   const [connectors, setConnectors] = useState<ConnectorStatus[]>([])
-  const [focus, setFocus] = useState(0)
-  const [panes, setPanes] = useState<Pane[]>([])
-  const [activePane, setActivePane] = useState<string | null>(null)
-  const [split, setSplit] = useState<Split>('single')
-  const [rankSeed, setRankSeed] = useState(0)
-  const [message, setMessage] = useState('stream mode')
-  const [search, setSearch] = useState('')
+  const [activeSourceId, setActiveSourceId] = useState<string | null>(
+    () => savedSourceIds()[0] ?? null,
+  )
+  const [activeItemBySource, setActiveItemBySource] = useState<
+    Record<string, number>
+  >({})
+  const [showAdd, setShowAdd] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
-  const sequence = useRef({ key: '', at: 0 })
-  const closedPanes = useRef<Pane[]>([])
+  const [search, setSearch] = useState('')
+  const [catalogIndex, setCatalogIndex] = useState(0)
+  const [message, setMessage] = useState('source tiles / ready')
   const searchRef = useRef<HTMLInputElement>(null)
+  const keySequence = useRef({ key: '', at: 0 })
+  const { panels, refreshSource, refreshAll } =
+    useCommunitySourcePanels(sourceIds)
+
+  const definitions = useMemo(
+    () => new Map(catalog.map((source) => [source.id, source])),
+    [catalog],
+  )
+  const tree = useMemo(() => buildBspLayout(sourceIds), [sourceIds])
+  const filteredCatalog = useMemo(
+    () => filterCommunitySources(catalog, search),
+    [catalog, search],
+  )
+  const selectedCatalogSource = filteredCatalog[catalogIndex] ?? null
+  const activePanel = activeSourceId ? panels[activeSourceId] : undefined
+  const activeItemIndex = activeSourceId
+    ? (activeItemBySource[activeSourceId] ?? 0)
+    : 0
+  const activeItem = activePanel?.items[activeItemIndex] ?? null
+  const activeUrl =
+    activeItem?.url ??
+    (activeSourceId ? definitions.get(activeSourceId)?.homepage : null)
 
   useEffect(() => {
-    Promise.all([loadReadingItems(), loadConnectorStatus()])
-      .then(([nextItems, nextConnectors]) => {
-        setItems(nextItems)
-        setConnectors(nextConnectors)
+    localStorage.setItem(SOURCES_STORAGE_KEY, JSON.stringify(sourceIds))
+  }, [sourceIds])
+
+  useEffect(() => {
+    if (activeSourceId && sourceIds.includes(activeSourceId)) return
+    setActiveSourceId(sourceIds[0] ?? null)
+  }, [activeSourceId, sourceIds])
+
+  useEffect(() => {
+    setCatalogIndex((current) =>
+      filteredCatalog.length === 0
+        ? 0
+        : Math.min(current, filteredCatalog.length - 1),
+    )
+  }, [filteredCatalog.length])
+
+  useEffect(() => {
+    if (!activeSourceId) return
+    const links = document.querySelectorAll<HTMLElement>(
+      `[data-source-id="${activeSourceId}"]`,
+    )
+    links[activeItemIndex]?.scrollIntoView({ block: 'nearest' })
+  }, [activeItemIndex, activeSourceId])
+
+  useEffect(() => {
+    if (!activeSourceId || !activePanel?.items.length) return
+    if (activeItemIndex < activePanel.items.length) return
+    setActiveItemBySource((current) => ({
+      ...current,
+      [activeSourceId]: activePanel.items.length - 1,
+    }))
+  }, [activeItemIndex, activePanel?.items.length, activeSourceId])
+
+  useEffect(() => {
+    let cancelled = false
+    loadCommunitySources()
+      .then((sources) => {
+        if (!cancelled && sources.length) setCatalog(sources)
       })
-      .catch((error) => setMessage((error as Error).message))
+      .catch(() => undefined)
+    loadConnectorStatus()
+      .then((status) => {
+        if (!cancelled) setConnectors(status)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  const ranked = useMemo(() => {
-    const query = search.trim().toLowerCase()
-    return [...items]
-      .filter(
-        (item) =>
-          !query ||
-          `${item.title} ${item.excerpt ?? ''} ${item.source_id ?? ''}`
-            .toLowerCase()
-            .includes(query),
-      )
-      .sort((a, b) => rank(b, rankSeed) - rank(a, rankSeed))
-  }, [items, rankSeed, search])
+  function openCatalog() {
+    setShowHelp(false)
+    setShowAdd(true)
+    setCatalogIndex(0)
+    window.setTimeout(() => searchRef.current?.focus(), 0)
+  }
 
-  const activeItem = ranked[focus] ?? null
+  function closeCatalog() {
+    setShowAdd(false)
+    setSearch('')
+    setCatalogIndex(0)
+  }
 
-  useEffect(() => {
-    document
-      .querySelector('.stream-item.active')
-      ?.scrollIntoView({ block: 'nearest' })
-  }, [focus])
-
-  function openItem(
-    item: ReadingItem,
-    direction: 'current' | 'left' | 'right' | 'up' | 'down' = 'current',
-  ) {
-    if (direction === 'current' && panes.length > 0 && activePane) {
-      setPanes((current) =>
-        current.map((pane) =>
-          pane.id === activePane ? { ...pane, itemId: item.id } : pane,
-        ),
-      )
+  function toggleSource(sourceId: string) {
+    const sourceName = definitions.get(sourceId)?.name ?? sourceId
+    if (sourceIds.includes(sourceId)) {
+      setSourceIds((current) => current.filter((id) => id !== sourceId))
+      setMessage(`removed ${sourceName}`)
       return
     }
-    const pane = { id: crypto.randomUUID(), itemId: item.id }
-    setPanes((current) => {
-      if (direction === 'left' || direction === 'up') return [pane, ...current]
-      return [...current, pane]
-    })
-    setActivePane(pane.id)
-    if (direction === 'left' || direction === 'right') setSplit('columns')
-    if (direction === 'up' || direction === 'down') setSplit('rows')
+    setSourceIds((current) => [...current, sourceId])
+    setActiveSourceId(sourceId)
+    setActiveItemBySource((current) => ({ ...current, [sourceId]: 0 }))
+    setMessage(`added ${sourceName}`)
   }
 
-  function closePane(id = activePane) {
-    if (!id) return
-    setPanes((current) => {
-      const removed = current.find((pane) => pane.id === id)
-      if (removed) closedPanes.current.push(removed)
-      const next = current.filter((pane) => pane.id !== id)
-      setActivePane(next.at(-1)?.id ?? null)
-      if (next.length <= 1) setSplit('single')
-      return next
-    })
+  function removeSource(sourceId: string) {
+    const index = sourceIds.indexOf(sourceId)
+    const nextIds = sourceIds.filter((id) => id !== sourceId)
+    setSourceIds(nextIds)
+    if (activeSourceId === sourceId)
+      setActiveSourceId(nextIds[Math.min(index, nextIds.length - 1)] ?? null)
+    setMessage(`removed ${definitions.get(sourceId)?.name ?? sourceId}`)
   }
 
-  function restorePane() {
-    const pane = closedPanes.current.pop()
-    if (!pane) return
-    setPanes((current) => [...current, pane])
-    setActivePane(pane.id)
-  }
-
-  function movePane(delta: number) {
-    if (!panes.length) return
-    const current = Math.max(
-      0,
-      panes.findIndex((pane) => pane.id === activePane),
+  function moveActiveSource(delta: -1 | 1) {
+    if (!activeSourceId) return
+    const next = moveSource(sourceIds, activeSourceId, delta)
+    if (next === sourceIds) return
+    setSourceIds(next)
+    setMessage(
+      `moved ${definitions.get(activeSourceId)?.name ?? activeSourceId}`,
     )
-    setActivePane(panes[(current + delta + panes.length) % panes.length].id)
   }
 
-  function sequenceKey(key: string): boolean {
-    const now = Date.now()
-    const previous = now - sequence.current.at < 800 ? sequence.current.key : ''
-    const combined = `${previous}${key}`
-    sequence.current = { key, at: now }
-    if (combined === 'yy' && activeItem?.url) {
-      navigator.clipboard
-        .writeText(activeItem.url)
-        .then(() => setMessage('url copied'))
-      sequence.current = { key: '', at: 0 }
-      return true
-    }
-    if (combined === 'gg') {
-      setFocus(0)
-      sequence.current = { key: '', at: 0 }
-      return true
-    }
-    if (combined === 'gr') {
-      setRankSeed((current) => current + 1)
-      setFocus(0)
-      setMessage('reranked by interests / recency / diversity')
-      sequence.current = { key: '', at: 0 }
-      return true
-    }
-    if (combined === 'gi') {
-      searchRef.current?.focus()
-      sequence.current = { key: '', at: 0 }
-      return true
-    }
-    if (combined === 'g0' && panes[0]) {
-      setActivePane(panes[0].id)
-      sequence.current = { key: '', at: 0 }
-      return true
-    }
-    if (combined === 'g$' && panes.at(-1)) {
-      setActivePane(panes.at(-1)!.id)
-      sequence.current = { key: '', at: 0 }
-      return true
-    }
-    return key === 'g' || key === 'y'
+  function activateSource(delta: number) {
+    if (sourceIds.length === 0) return
+    const current = Math.max(0, sourceIds.indexOf(activeSourceId ?? ''))
+    const index = circularIndex(current, delta, sourceIds.length)
+    setActiveSourceId(sourceIds[index])
   }
 
-  useEffect(() => {
-    function keydown(event: KeyboardEvent) {
-      if (isTyping(event.target)) return
-      if (sequenceKey(event.key)) {
-        event.preventDefault()
-      } else if (event.key === '?') {
-        event.preventDefault()
-        setShowHelp((current) => !current)
-      } else if (event.key === 'j') {
-        event.preventDefault()
-        setFocus((current) => Math.min(ranked.length - 1, current + 1))
-      } else if (event.key === 'k') {
-        event.preventDefault()
-        setFocus((current) => Math.max(0, current - 1))
-      } else if (event.key === 'G') {
-        event.preventDefault()
-        setFocus(Math.max(0, ranked.length - 1))
-      } else if (event.key === 'd') {
-        event.preventDefault()
-        setFocus((current) => Math.min(ranked.length - 1, current + 8))
-      } else if (event.key === 'u') {
-        event.preventDefault()
-        setFocus((current) => Math.max(0, current - 8))
-      } else if ((event.key === 'Enter' || event.key === 'f') && activeItem) {
-        openItem(activeItem)
-      } else if ((event.key === 'F' || event.key === 'o') && activeItem?.url) {
-        window.open(activeItem.url, '_blank', 'noopener,noreferrer')
-      } else if (event.key === 'H') {
-        history.back()
-      } else if (event.key === 'L') {
-        history.forward()
-      } else if (event.key === 'J') {
-        movePane(-1)
-      } else if (event.key === 'K') {
-        movePane(1)
-      } else if (event.key === 'x') {
-        closePane()
-      } else if (event.key === 'X') {
-        restorePane()
-      } else if (event.key === '/') {
-        event.preventDefault()
-        searchRef.current?.focus()
-      } else if (event.key === 'r') {
-        window.location.reload()
-      } else if (event.key === 't') {
-        window.open('about:blank', '_blank', 'noopener,noreferrer')
-      }
+  function activateItem(index: number) {
+    if (!activeSourceId || !activePanel?.items.length) return
+    const next = Math.max(0, Math.min(index, activePanel.items.length - 1))
+    setActiveItemBySource((current) => ({
+      ...current,
+      [activeSourceId]: next,
+    }))
+  }
+
+  function refreshOne(sourceId: string) {
+    setMessage(`refreshing ${definitions.get(sourceId)?.name ?? sourceId}`)
+    void refreshSource(sourceId)
+  }
+
+  function refreshVisibleSources() {
+    setMessage('refreshing all sources')
+    void refreshAll().then(() => setMessage('source refresh complete'))
+  }
+
+  function openActiveItem() {
+    if (!activeUrl) return
+    window.open(activeUrl, '_blank', 'noopener,noreferrer')
+  }
+
+  function handleCatalogKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      closeCatalog()
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      setCatalogIndex((current) =>
+        circularIndex(current, 1, filteredCatalog.length),
+      )
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setCatalogIndex((current) =>
+        circularIndex(current, -1, filteredCatalog.length),
+      )
+    } else if (event.key === 'Enter' && selectedCatalogSource) {
+      event.preventDefault()
+      toggleSource(selectedCatalogSource.id)
     }
-    window.addEventListener('keydown', keydown)
-    return () => window.removeEventListener('keydown', keydown)
-  }, [activeItem, activePane, panes, ranked.length])
+  }
 
   async function connect(provider: ReadingProvider) {
     try {
@@ -247,45 +422,175 @@ export function ReadingConsole() {
     }
   }
 
-  async function refresh() {
+  async function syncOwnerStream() {
     try {
-      setMessage('refreshing')
+      setMessage('refreshing owner stream')
       await refreshReading()
-      setItems(await loadReadingItems())
-      setMessage('refreshed')
+      setMessage('owner stream refreshed')
     } catch (error) {
       setMessage((error as Error).message)
     }
   }
+
+  useEffect(() => {
+    function keydown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        if (showAdd) closeCatalog()
+        if (showHelp) setShowHelp(false)
+        return
+      }
+      if (showAdd || showHelp) return
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        openCatalog()
+        return
+      }
+      if (isTyping(event.target)) return
+
+      const now = Date.now()
+      const prior =
+        now - keySequence.current.at < 800 ? keySequence.current.key : ''
+      const sequence = `${prior}${event.key}`
+      keySequence.current = { key: event.key, at: now }
+
+      if (sequence === 'gg') {
+        event.preventDefault()
+        activateItem(0)
+        keySequence.current = { key: '', at: 0 }
+      } else if (sequence === 'yy' && activeUrl) {
+        event.preventDefault()
+        void navigator.clipboard
+          .writeText(activeUrl)
+          .then(() => setMessage('url copied'))
+        keySequence.current = { key: '', at: 0 }
+      } else if (event.key === 'g' || event.key === 'y') {
+        event.preventDefault()
+      } else if (event.key === '/') {
+        event.preventDefault()
+        openCatalog()
+      } else if (event.key === '?') {
+        event.preventDefault()
+        setShowHelp(true)
+      } else if (event.key === 'j') {
+        event.preventDefault()
+        activateItem(activeItemIndex + 1)
+      } else if (event.key === 'k') {
+        event.preventDefault()
+        activateItem(activeItemIndex - 1)
+      } else if (event.key === 'G') {
+        event.preventDefault()
+        activateItem((activePanel?.items.length ?? 1) - 1)
+      } else if (event.key === 'J') {
+        event.preventDefault()
+        activateSource(-1)
+      } else if (event.key === 'K') {
+        event.preventDefault()
+        activateSource(1)
+      } else if (event.key === '[') {
+        event.preventDefault()
+        moveActiveSource(-1)
+      } else if (event.key === ']') {
+        event.preventDefault()
+        moveActiveSource(1)
+      } else if (event.key === 'Enter' || event.key === 'f') {
+        event.preventDefault()
+        openActiveItem()
+      } else if (event.key === 'r' && activeSourceId) {
+        event.preventDefault()
+        refreshOne(activeSourceId)
+      } else if (event.key === 'R') {
+        event.preventDefault()
+        refreshVisibleSources()
+      }
+    }
+    window.addEventListener('keydown', keydown)
+    return () => window.removeEventListener('keydown', keydown)
+  })
 
   return (
     <section className="reading-workbench">
       <aside className="reading-sidebar">
         <header className="reading-sidebar-head">
           <div>
-            <p className="section-label">[ stream ]</p>
-            <h1>information (work in progress, doesn't work)</h1>
+            <p className="section-label">[ reading / sources ]</p>
+            <h1>peacesign reader</h1>
           </div>
-          <button
-            className="icon-button"
-            onClick={() => setRankSeed((seed) => seed + 1)}
-            title="rank and shuffle (gr)"
-          >
-            gr
+          <button className="add-source-button" onClick={openCatalog}>
+            + source
           </button>
         </header>
-        <div className="reading-search">
-          <input
-            ref={searchRef}
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value)
-              setFocus(0)
-            }}
-            placeholder="/ search"
-            aria-label="Search articles"
-          />
+
+        <div className="source-manager-copy">
+          <p>community feeds, arranged as a binary space partition.</p>
+          <small>
+            {sourceIds.length} source{sourceIds.length === 1 ? '' : 's'} active
+            · {message}
+          </small>
         </div>
+
+        <div className="source-list" aria-label="Added sources">
+          {sourceIds.map((sourceId, index) => {
+            const source = definitions.get(sourceId)
+            if (!source) return null
+            const active = activeSourceId === sourceId
+            return (
+              <div
+                className={
+                  active ? 'source-list-row active' : 'source-list-row'
+                }
+                key={sourceId}
+                role="button"
+                tabIndex={0}
+                aria-current={active ? 'true' : undefined}
+                onClick={() => setActiveSourceId(sourceId)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    setActiveSourceId(sourceId)
+                  }
+                }}
+              >
+                <span className={`source-kind source-kind-${source.kind}`} />
+                <span>{source.name}</span>
+                <span className="source-list-actions">
+                  <button
+                    disabled={index === 0}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      setSourceIds(moveSource(sourceIds, sourceId, -1))
+                    }}
+                    aria-label={`Move ${source.name} earlier`}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    disabled={index === sourceIds.length - 1}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      setSourceIds(moveSource(sourceIds, sourceId, 1))
+                    }}
+                    aria-label={`Move ${source.name} later`}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      removeSource(sourceId)
+                    }}
+                    aria-label={`Remove ${source.name}`}
+                  >
+                    ×
+                  </button>
+                </span>
+              </div>
+            )
+          })}
+          {sourceIds.length === 0 && (
+            <p className="reading-empty">No sources yet. Add one to begin.</p>
+          )}
+        </div>
+
         <div className="connector-strip">
           {(['google', 'feedly'] as const).map((provider) => {
             const connector = connectors.find(
@@ -302,121 +607,151 @@ export function ReadingConsole() {
               </button>
             )
           })}
-          <button className="connector" onClick={refresh}>
-            refresh<small>owner</small>
+          <button className="connector" onClick={syncOwnerStream}>
+            owner sync<small>optional</small>
           </button>
-        </div>
-        <div
-          className="article-stream"
-          role="listbox"
-          aria-label="All articles"
-        >
-          {ranked.length === 0 ? (
-            <p className="reading-empty">
-              No articles yet. Connect Gmail or Feedly as owner.
-            </p>
-          ) : (
-            ranked.map((item, index) => (
-              <button
-                key={item.id}
-                className={
-                  focus === index ? 'stream-item active' : 'stream-item'
-                }
-                onClick={() => {
-                  setFocus(index)
-                  openItem(item)
-                }}
-                role="option"
-                aria-selected={focus === index}
-              >
-                <span className={`provider-mark provider-${item.provider}`} />
-                <span className="stream-item-copy">
-                  <strong>{item.title}</strong>
-                  <small>
-                    {item.source_id ?? item.author ?? item.provider}
-                  </small>
-                </span>
-              </button>
-            ))
-          )}
         </div>
       </aside>
 
-      <main className="reading-editors">
-        <header className="editor-toolbar">
-          <span>{message}</span>
-          <div className="editor-actions">
-            <button onClick={() => activeItem && openItem(activeItem, 'left')}>
-              split left
-            </button>
-            <button onClick={() => activeItem && openItem(activeItem, 'right')}>
-              split right
-            </button>
-            <button onClick={() => activeItem && openItem(activeItem, 'up')}>
-              split up
-            </button>
-            <button onClick={() => activeItem && openItem(activeItem, 'down')}>
-              split down
-            </button>
-            <button onClick={() => closePane()}>close</button>
+      <main className="reading-sources">
+        <header className="source-toolbar">
+          <span>
+            {tree ? 'bsp / live source panels' : 'bsp / empty workspace'}
+          </span>
+          <div className="source-toolbar-actions">
+            <button onClick={openCatalog}>add</button>
+            <button onClick={refreshVisibleSources}>refresh</button>
+            <button onClick={() => setShowHelp(true)}>?</button>
           </div>
         </header>
-        <div className={`editor-panes panes-${split}`}>
-          {panes.length === 0 ? (
-            <div className="editor-welcome">
-              <p className="section-label">[ shortcuts ]</p>
-              <p>
-                j/k move / gr rerank / enter open / yy copy / x close / ? help
-              </p>
-            </div>
+        <div className="bsp-canvas">
+          {tree ? (
+            <BspTile
+              node={tree}
+              definitions={definitions}
+              panels={panels}
+              activeSourceId={activeSourceId}
+              activeItemBySource={activeItemBySource}
+              onActivate={setActiveSourceId}
+              onItemActivate={(sourceId, index) => {
+                setActiveSourceId(sourceId)
+                setActiveItemBySource((current) => ({
+                  ...current,
+                  [sourceId]: index,
+                }))
+              }}
+              onRefresh={refreshOne}
+              onRemove={removeSource}
+            />
           ) : (
-            panes.map((pane) => {
-              const item = items.find((entry) => entry.id === pane.itemId)
-              if (!item) return null
-              return (
-                <article
-                  className={
-                    activePane === pane.id
-                      ? 'editor-pane active'
-                      : 'editor-pane'
-                  }
-                  key={pane.id}
-                  onClick={() => setActivePane(pane.id)}
-                >
-                  <header className="editor-tab">
-                    <span>{item.title}</span>
-                    <button
-                      onClick={(event) => {
-                        event.stopPropagation()
-                        closePane(pane.id)
-                      }}
-                    >
-                      x
-                    </button>
-                  </header>
-                  <div className="editor-content">
-                    <p className="editor-source">
-                      {item.source_id ?? item.author ?? item.provider}
-                    </p>
-                    <h2>{item.title}</h2>
-                    <p>{item.excerpt || 'No preview available.'}</p>
-                    <div className="editor-tags">
-                      {itemTags(item).map((tag) => (
-                        <span key={tag}>#{tag.replace(/^#/, '')}</span>
-                      ))}
-                    </div>
-                    {item.url && (
-                      <a href={item.url} target="_blank" rel="noreferrer">
-                        open source
-                      </a>
-                    )}
-                  </div>
-                </article>
-              )
-            })
+            <div className="bsp-empty">
+              <p className="section-label">[ add a source ]</p>
+              <p>Open the source catalog and choose a community feed.</p>
+              <button onClick={openCatalog}>open catalog</button>
+            </div>
           )}
         </div>
       </main>
+
+      {showAdd && (
+        <div className="source-modal-overlay" onClick={closeCatalog}>
+          <div
+            className="source-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add a reading source"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="source-modal-head">
+              <div>
+                <p className="section-label">[ catalog ]</p>
+                <h2>add source</h2>
+              </div>
+              <button onClick={closeCatalog}>done</button>
+            </header>
+            <input
+              ref={searchRef}
+              autoFocus
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value)
+                setCatalogIndex(0)
+              }}
+              onKeyDown={handleCatalogKeyDown}
+              placeholder="search community sources"
+              aria-label="Search community sources"
+              aria-controls="community-source-results"
+              aria-activedescendant={
+                selectedCatalogSource
+                  ? `catalog-source-${selectedCatalogSource.id}`
+                  : undefined
+              }
+            />
+            <div
+              className="catalog-results"
+              id="community-source-results"
+              role="listbox"
+            >
+              {filteredCatalog.length === 0 ? (
+                <div className="catalog-empty">
+                  <strong>no community match</strong>
+                  <span>custom sources are planned, but not wired yet.</span>
+                  <button disabled>+ custom source / coming later</button>
+                </div>
+              ) : (
+                filteredCatalog.map((source, index) => {
+                  const added = sourceIds.includes(source.id)
+                  const selected = index === catalogIndex
+                  return (
+                    <article
+                      className={
+                        selected ? 'catalog-source active' : 'catalog-source'
+                      }
+                      id={`catalog-source-${source.id}`}
+                      key={source.id}
+                      role="option"
+                      aria-selected={selected}
+                      onClick={() => setCatalogIndex(index)}
+                      onDoubleClick={() => toggleSource(source.id)}
+                      onMouseEnter={() => setCatalogIndex(index)}
+                    >
+                      <div>
+                        <div className="catalog-source-name">
+                          <strong>{source.name}</strong>
+                          <span
+                            className={`source-kind source-kind-${source.kind}`}
+                          >
+                            {source.kind}
+                          </span>
+                        </div>
+                        <p>{source.blurb}</p>
+                        <small>
+                          {source.category} ·{' '}
+                          {source.homepage.replace(/^https?:\/\//, '')}
+                        </small>
+                      </div>
+                      <button onClick={() => toggleSource(source.id)}>
+                        {added ? '− remove' : '+ add'}
+                      </button>
+                    </article>
+                  )
+                })
+              )}
+            </div>
+            {selectedCatalogSource && (
+              <aside className="catalog-preview" aria-live="polite">
+                <strong>{selectedCatalogSource.name}</strong>
+                <span>{selectedCatalogSource.blurb}</span>
+                <small>
+                  {sourceIds.includes(selectedCatalogSource.id)
+                    ? `${panels[selectedCatalogSource.id]?.items.length ?? 0} loaded links`
+                    : 'press Enter to add'}
+                </small>
+              </aside>
+            )}
+          </div>
+        </div>
+      )}
 
       {showHelp && (
         <div className="shortcut-overlay" onClick={() => setShowHelp(false)}>
@@ -424,25 +759,22 @@ export function ReadingConsole() {
             className="shortcut-help"
             onClick={(event) => event.stopPropagation()}
             role="dialog"
-            aria-label="Vimium shortcuts"
+            aria-label="Reading shortcuts"
           >
             <div className="shortcut-help-head">
-              <span>Vimium shortcuts</span>
-              <button onClick={() => setShowHelp(false)}>x</button>
+              <span>reading shortcuts</span>
+              <button onClick={() => setShowHelp(false)}>×</button>
             </div>
             {[
-              ['j / k', 'next / previous article'],
-              ['gg / G', 'first / last article'],
-              ['d / u', 'half-page down / up'],
-              ['f / F', 'open pane / open source'],
+              ['j / k', 'next / previous link'],
+              ['gg / G', 'first / last link'],
+              ['J / K', 'previous / next source panel'],
+              ['[ / ]', 'move source earlier / later'],
+              ['enter / f', 'open focused link'],
               ['yy', 'copy focused URL'],
-              ['x / X', 'close / restore pane'],
-              ['J / K', 'previous / next pane'],
-              ['/', 'search'],
-              ['gi', 'focus search'],
-              ['gr', 'rerank and shuffle'],
-              ['r', 'reload'],
-              ['?', 'toggle help'],
+              ['r / R', 'refresh focused / all sources'],
+              ['/ or cmd+k', 'open source catalog'],
+              ['?', 'toggle this help'],
             ].map(([keys, action]) => (
               <div className="shortcut-row" key={keys}>
                 <kbd>{keys}</kbd>

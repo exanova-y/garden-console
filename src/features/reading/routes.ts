@@ -1,6 +1,8 @@
 import { verifyAuth } from '../vault/routes'
 import type { Env } from '../../server/env'
 import { decryptConnectorToken, encryptConnectorToken } from './server-crypto'
+import { fetchCommunityItems } from './source-fetch'
+import { COMMUNITY_SOURCES } from './catalog'
 
 type Provider = 'google' | 'feedly'
 
@@ -440,6 +442,18 @@ export async function handleReading(
 ): Promise<Response> {
   const url = new URL(request.url)
   const path = url.pathname
+
+  if (path === '/api/reading/community-sources' && request.method === 'GET')
+    return json(COMMUNITY_SOURCES)
+
+  if (path === '/api/reading/community-source' && request.method === 'GET') {
+    const sourceId = url.searchParams.get('id') ?? ''
+    try {
+      return json(await fetchCommunityItems(sourceId))
+    } catch (error) {
+      return json((error as Error).message, { status: 400 })
+    }
+  }
 
   if (path === '/api/reading/items' && request.method === 'GET') {
     const provider = url.searchParams.get('provider')

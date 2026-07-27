@@ -215,7 +215,7 @@ export function HealthConsole({
           <span className={`sync-state sync-${syncState}`}>
             {guest ? 'guest' : syncState}
           </span>
-          <button
+          {/* <button
             className="button button-quiet"
             onClick={restore}
             disabled={syncState === 'loading'}
@@ -228,7 +228,7 @@ export function HealthConsole({
             disabled={syncState === 'saving'}
           >
             save encrypted
-          </button>
+          </button> */}
         </div>
       </div>
 
@@ -299,14 +299,16 @@ function HistoryPage({
     <div className="box timeline-card history-page">
       <div className="timeline-head">
         <div>
-          <p className="section-label">[ history ]</p>
-          <h2>{timeline.length} records</h2>
+          <p>[ dose history ]</p>
+          {/* <h2>{timeline.length} records</h2> */}
         </div>
-        <span className="muted">newest first</span>
       </div>
       {timeline.length === 0 ? (
         <p className="muted">No records.</p>
-      ) : (
+      ) : (<>
+        {timeline.length > 1 && (
+          <p>{timeline.length} records</p>
+        )}
         <div className="timeline-list">
           {timeline.map((entry) => (
             <TimelineEntry
@@ -316,7 +318,7 @@ function HistoryPage({
             />
           ))}
         </div>
-      )}
+      </>)}
     </div>
   )
 }
@@ -365,8 +367,8 @@ function CalibrationPage() {
   return (
     <div className="calibration-grid">
       <article className="box calibration-card form-green">
-        <p className="section-label">[ hrt ]</p>
-        <h2>pharmacokinetics</h2>
+        {/* <p className="section-label">[ hrt ]</p> */}
+        <p>[ hrt ]</p>
         {/* <p className="calibration-state">
           {hasHrt ? 'events present' : 'waiting for events'}
         </p> */}
@@ -379,12 +381,12 @@ function CalibrationPage() {
           target="_blank"
           rel="noreferrer"
         >
-          upstream repo
+          model
         </a>
       </article>
       <article className="box calibration-card form-turquoise">
-        <p className="section-label">[ concerta ]</p>
-        <h2>population curve</h2>
+        {/* <p className="section-label">[ concerta ]</p> */}
+        <p>[ bateman model ]</p>
         {/* <p className="calibration-state">label anchored</p> */}
         <p className="muted">
           22% immediate plus 78% osmotic Bateman model, with peaks around 2.5 h
@@ -393,8 +395,8 @@ function CalibrationPage() {
         </p>
       </article>
       <article className="box calibration-card form-lavender">
-        <p className="section-label">[ nac ]</p>
-        {/* <h2>not calibrated</h2> */}
+        {/* <p className="section-label">[ nac ]</p> */}
+        <p>[ exponential decay ]</p>
         <p className="muted">
           using simple exponential decay model with half life of 6.25h for oral
           administration
@@ -437,8 +439,7 @@ function MoodPage({
         className="box form-card form-lavender mood-form"
         onSubmit={onSubmit}
       >
-        <p className="section-label">[ observation ]</p>
-        <h2>mood</h2>
+        <p>[ mood ]</p>
         <div className="mood-scale" role="radiogroup" aria-label="mood score">
           {([1, 2, 3, 4, 5] as const).map((score) => (
             <button
@@ -487,10 +488,10 @@ function MoodPage({
       <section className="box mood-history-card">
         <div className="timeline-head">
           <div>
-            <p className="section-label">[ last 30 days ]</p>
+            <p>[ last 30 days ]</p>
             <h2>{moods.length} check-ins</h2>
           </div>
-          <span className="muted">git-style daily boxes</span>
+          {/* <span className="muted">git-style daily boxes</span> */}
         </div>
         <div
           className="mood-commit-grid"
@@ -515,9 +516,8 @@ function MoodPage({
           <span>high</span>
         </div>
         <div className="mood-hashtags">
-          <p className="section-label">[ hashtags ]</p>
           {hashtagCloud(moods).length === 0 ? (
-            <span className="muted">No hashtags.</span>
+            <span className="muted">no hashtags.</span>
           ) : (
             hashtagCloud(moods).map((tag) => (
               <span
@@ -535,15 +535,14 @@ function MoodPage({
       <section className="box mood-log-card">
         <div className="timeline-head">
           <div>
-            <p className="section-label">[ mood log ]</p>
-            <h2>all check-ins</h2>
+            <p>[ mood hstory ]</p>
+            {/* <h2>all check-ins</h2> */}
           </div>
-          <span className="muted">newest first</span>
         </div>
         {moods.length === 0 ? (
-          <p className="muted">No mood records.</p>
+          <p className="muted">no mood records.</p>
         ) : (
-          <div className="timeline-list">
+          <><div className="timeline-list">
             {[...moods]
               .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
               .map((entry) => (
@@ -553,8 +552,8 @@ function MoodPage({
                   removeEntry={removeEntry}
                 />
               ))}
-          </div>
-        )}
+        </div>
+      </>)}
       </section>
     </div>
   )

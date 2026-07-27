@@ -1,4 +1,10 @@
-import type { ConnectorStatus, ReadingItem, ReadingProvider } from './types'
+import type {
+  CommunitySourceDef,
+  ConnectorStatus,
+  ReadingItem,
+  ReadingProvider,
+  SourceItem,
+} from './types'
 
 async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, init)
@@ -12,6 +18,20 @@ export function loadReadingItems(): Promise<ReadingItem[]> {
 
 export function loadConnectorStatus(): Promise<ConnectorStatus[]> {
   return getJson('/api/reading/connectors')
+}
+
+export function loadCommunitySources(): Promise<CommunitySourceDef[]> {
+  return getJson('/api/reading/community-sources')
+}
+
+export function loadCommunityItems(
+  sourceId: string,
+  init?: RequestInit,
+): Promise<SourceItem[]> {
+  return getJson(
+    `/api/reading/community-source?id=${encodeURIComponent(sourceId)}`,
+    init,
+  )
 }
 
 export async function beginConnector(provider: ReadingProvider): Promise<void> {

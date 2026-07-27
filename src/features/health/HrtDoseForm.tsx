@@ -289,8 +289,7 @@ export function HrtDoseForm({ onSave }: HrtDoseFormProps) {
       className="box form-card form-turquoise hrt-dose-form"
       onSubmit={save}
     >
-      <p className="section-label">[ intervention ]</p>
-      <h2>dose</h2>
+      <p>[ intervention ]</p>
       <ToggleRow
         label="tracker"
         options={[

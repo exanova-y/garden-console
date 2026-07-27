@@ -25,6 +25,11 @@ head_sampling_rate = 0.1
 [triggers]
 crons = ["*/30 * * * *"]
 
+# Custom domain on the adiabatic.garden Cloudflare zone (replaces Vercel).
+[[routes]]
+pattern = "app.adiabatic.garden"
+custom_domain = true
+
 [[d1_databases]]
 binding = "DB"
 database_name = "garden-console"

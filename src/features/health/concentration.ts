@@ -19,7 +19,7 @@ export interface GraphSeries {
   label: string
   unit: string
   color: string
-  confidence: 'upstream' | 'provisional' | 'population'
+  confidence: 'upstream' | 'provisional' | 'population' | 'oyama model' | 'population study' | 'half life 6.25h'
   values: number[]
 }
 
@@ -154,11 +154,11 @@ export function buildConcentrationFrame(
   const definitions: Array<
     [AnalyteKey, string, string, string, GraphSeries['confidence']]
   > = [
-    ['estradiol', 'estradiol', 'pg/mL', '#00fcb5', 'upstream'],
-    ['testosterone', 'testosterone', 'ng/dL', '#00fc50', 'upstream'],
-    ['cyproterone', 'CPA', 'ng/mL', '#9058f8', 'upstream'],
-    ['methylphenidate', 'methylphenidate', 'ng/mL', '#7287fd', 'population'],
-    ['nac', 'NAC / total', 'ng/mL', '#f5a9b8', 'provisional'],
+    ['estradiol', 'estradiol', 'pg/mL', '#00fcb5', 'oyama model'],
+    ['testosterone', 'testosterone', 'ng/dL', '#00fc50', 'oyama model'],
+    ['cyproterone', 'CPA', 'ng/mL', '#9058f8', 'oyama model'],
+    ['methylphenidate', 'methylphenidate', 'ng/mL', '#7287fd', 'population study'],
+    ['nac', 'NAC', 'ng/mL', '#f5a9b8', 'half life 6.25h'],
   ]
   return {
     startAt,

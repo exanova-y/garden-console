@@ -1,5 +1,23 @@
 export type ReadingProvider = 'google' | 'feedly'
 
+export type SourceKind = 'api' | 'rss' | 'atom'
+
+export interface CommunitySourceDef {
+  id: string
+  name: string
+  kind: SourceKind
+  url: string
+  homepage: string
+  category: string
+  blurb: string
+}
+
+export interface SourceItem {
+  title: string
+  url: string | null
+  published_at: number | null
+}
+
 export interface ReadingItem {
   id: string
   provider: ReadingProvider

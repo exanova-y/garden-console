@@ -21,6 +21,7 @@
     "src/features/health",
     "src/features/reading/ReadingConsole.tsx",
     "src/features/reading/client.ts",
+    "src/features/reading/catalog.ts",
     "src/features/reading/interests.ts",
     "src/features/reading/types.ts",
     "src/features/identity/AuthGate.tsx",

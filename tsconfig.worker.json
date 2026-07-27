@@ -21,6 +21,8 @@
     "src/features/vault",
     "src/features/reading/index.ts",
     "src/features/reading/routes.ts",
+    "src/features/reading/catalog.ts",
+    "src/features/reading/source-fetch.ts",
     "src/features/reading/server-crypto.ts",
     "src/features/reading/types.ts"
   ]

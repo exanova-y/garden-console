@@ -289,8 +289,7 @@ export function ConcentrationGraph({ snapshot }: { snapshot: HealthSnapshot }) {
     <section className="box concentration-graph-card">
       <div className="graph-header">
         <div>
-          <p className="section-label">[ x_hat(t) ]</p>
-          <h2>estimated levels</h2>
+          <p>[ current estimated level ]</p>
           <p className="muted graph-disclaimer">
             refer to peak and trough lab results when possible.
           </p>
@@ -318,7 +317,7 @@ export function ConcentrationGraph({ snapshot }: { snapshot: HealthSnapshot }) {
               className={mode === 'combined' ? 'chip active' : 'chip'}
               onClick={() => setMode('combined')}
             >
-              same / normalized
+              one graph
             </button>
           </div>
         </div>
@@ -344,7 +343,7 @@ export function ConcentrationGraph({ snapshot }: { snapshot: HealthSnapshot }) {
 
       {activeSeries.length === 0 ? (
         <p className="graph-empty">
-          Record an HRT, Concerta, or NAC dose to draw x_hat(t).
+          dose history empty
         </p>
       ) : mode === 'separate' ? (
         <div className="graph-panels">
