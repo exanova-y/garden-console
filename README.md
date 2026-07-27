@@ -1,5 +1,8 @@
-# Peacesign
+# PEACESIGN!!!!!!!!!!!!!!!!!
 
+*The red sky fading in the distance   
+The peace sign burning in a vision from God   
+Please help me   *
 
 ![](peacesign.png)
 Tracking HRT, meds, mood and an infovore news aggregator at `peacesign.adiabatic.garden`.
