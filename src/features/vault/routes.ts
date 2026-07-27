@@ -33,7 +33,7 @@ function json(data: unknown, init?: ResponseInit): Response {
 
 function corsHeaders(env: Env, request: Request): Headers {
   const headers = new Headers()
-  const allowed = env.ALLOWED_ORIGIN ?? 'https://app.adiabatic.garden'
+  const allowed = env.ALLOWED_ORIGIN ?? 'https://peacesign.adiabatic.garden'
   const origin = request.headers.get('Origin')
   if (origin && origin === allowed) {
     headers.set('Access-Control-Allow-Origin', origin)

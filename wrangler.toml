@@ -15,7 +15,7 @@ head_sampling_rate = 0.1
 # Required secrets (set via `wrangler secret put <NAME>` once 1Password CLI or
 # the Cloudflare dashboard is available):
 #   JWT_SECRET       — random >= 32 chars
-#   ALLOWED_ORIGIN   — e.g. https://app.adiabatic.garden
+#   ALLOWED_ORIGIN   — e.g. https://peacesign.adiabatic.garden
 #   ADMIN_USERNAME   — optional
 #   ADMIN_PASSWORD   — optional, set together with ADMIN_USERNAME
 #   CONNECTOR_ENCRYPTION_KEY — random >= 32 chars, encrypts OAuth tokens in D1
@@ -27,7 +27,7 @@ crons = ["*/30 * * * *"]
 
 # Custom domain on the adiabatic.garden Cloudflare zone (replaces Vercel).
 [[routes]]
-pattern = "app.adiabatic.garden"
+pattern = "peacesign.adiabatic.garden"
 custom_domain = true
 
 [[d1_databases]]

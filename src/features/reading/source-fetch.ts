@@ -4,7 +4,7 @@ import type { CommunitySourceDef, SourceItem } from './types'
 
 const FETCH_OPTIONS = {
   cf: { cacheTtl: 300 },
-  headers: { 'User-Agent': 'peacesign-reader/1.0 (+https://app.adiabatic.garden)' },
+  headers: { 'User-Agent': 'peacesign-reader/1.0 (+https://peacesign.adiabatic.garden)' },
 } as const
 
 async function fetchJson(url: string): Promise<any> {
