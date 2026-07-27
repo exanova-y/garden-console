@@ -1,5 +1,7 @@
 # Peacesign
 
+
+![](peacesign.png)
 Tracking HRT, meds, mood and an infovore news aggregator at `peacesign.adiabatic.garden`.
 
 The console is a Vite/React application served by a Cloudflare Worker. D1 will
@@ -46,6 +48,14 @@ corepack pnpm check
 corepack pnpm build
 corepack pnpm worker:dev
 ```
+
+Deployment
+```
+pnpm build
+npx wrangler deploy
+```
+
+Always run build before deploy to generate corresponding /dist folder, which is not tracked by github
 
 ## Stages
 
