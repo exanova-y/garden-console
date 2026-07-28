@@ -153,7 +153,7 @@ export function SourceCatalog({
       >
         <header className="source-modal-head">
           <div>
-            <p className="section-label">[ add source ]</p>
+            <p>[ add source ]</p>
           </div>
           <button onClick={onClose}>done</button>
         </header>
