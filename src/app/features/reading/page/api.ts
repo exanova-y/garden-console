@@ -9,6 +9,15 @@ import type {
 async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, init)
   if (!response.ok) throw new Error(await response.text())
+
+  const contentType = response.headers.get('content-type') ?? ''
+  if (!contentType.toLowerCase().includes('application/json')) {
+    throw new Error(
+      `Reading API returned ${contentType || 'an unknown content type'} for ${path}. ` +
+        'Restart the integrated dev server with `pnpm dev`.',
+    )
+  }
+
   return response.json() as Promise<T>
 }
 

@@ -1,12 +1,14 @@
+import type { CSSProperties } from 'react'
 import type { BspNode } from '../page/reader-state'
 import type { SourcePanelState } from '../page/source-queries'
 import type { CommunitySourceDef, SourceItem } from '../page/types'
 
-function formatDate(timestamp: number | null): string {
-  if (!timestamp) return 'date unknown'
-  return new Date(timestamp * 1000).toLocaleDateString(undefined, {
+function formatTimestamp(timestamp: number): string {
+  return new Date(timestamp * 1000).toLocaleString(undefined, {
     month: 'short',
     day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   })
 }
 
@@ -48,6 +50,7 @@ function SourcePanel({
       className={active ? 'source-tile active' : 'source-tile'}
       data-source-panel={source.id}
       onClick={onActivate}
+      onMouseEnter={onActivate}
     >
       <header className="source-tile-head">
         <div className="source-tile-title">
@@ -72,19 +75,22 @@ function SourcePanel({
         </div>
       </header>
 
-      <pre data-source-runtime={source.id}>
-        {JSON.stringify(
-          panel.result ?? {
-            source_id: source.id,
-            kind: source.kind,
-            adapter: source.adapter,
-            state: panel.status,
-            request: `/api/reading/community-source?id=${source.id}`,
-          },
-          null,
-          2,
-        )}
-      </pre>
+      <details className="source-runtime">
+        <summary>runtime</summary>
+        <pre data-source-runtime={source.id}>
+          {JSON.stringify(
+            panel.result ?? {
+              source_id: source.id,
+              kind: source.kind,
+              adapter: source.adapter,
+              state: panel.status,
+              request: `/api/reading/community-source?id=${source.id}`,
+            },
+            null,
+            2,
+          )}
+        </pre>
+      </details>
 
       <div className="source-links">
         {panel.error && (
@@ -95,7 +101,7 @@ function SourcePanel({
         {loading && panel.items.length === 0 ? (
           <p className="source-status">polling source…</p>
         ) : panel.status === 'idle' ? (
-          <p className="source-status">not polled · press poll or r</p>
+          <p className="source-status">not polled · press poll</p>
         ) : panel.items.length === 0 && !panel.error ? (
           <p className="source-status">no links returned</p>
         ) : (
@@ -113,13 +119,16 @@ function SourcePanel({
               rel="noreferrer"
               key={sourceKey(item, index)}
               onClick={() => onItemActivate(index)}
+              onMouseEnter={() => onItemActivate(index)}
               onFocus={() => {
                 onActivate()
                 onItemActivate(index)
               }}
             >
               <span>{item.title}</span>
-              <time>{formatDate(item.published_at)}</time>
+              {item.published_at !== null && (
+                <time>{formatTimestamp(item.published_at)}</time>
+              )}
             </a>
           ))
         )}
@@ -185,8 +194,24 @@ export function SourceCanvas({
     onRemove,
   }
 
+  const style =
+    node.axis === 'vertical'
+      ? {
+          gridTemplateColumns: `minmax(0, ${node.ratio}fr) minmax(0, ${
+            1 - node.ratio
+          }fr)`,
+        }
+      : {
+          gridTemplateRows: `minmax(0, ${node.ratio}fr) minmax(0, ${
+            1 - node.ratio
+          }fr)`,
+        }
+
   return (
-    <div className={`bsp-split bsp-${node.direction}`}>
+    <div
+      className={`bsp-split bsp-${node.axis}`}
+      style={style satisfies CSSProperties}
+    >
       <SourceCanvas node={node.first} {...childProps} />
       <SourceCanvas node={node.second} {...childProps} />
     </div>

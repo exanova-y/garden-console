@@ -1,10 +1,11 @@
 import type { UseQueryResult } from '@tanstack/react-query'
 import { ConnectorRuntime } from './ConnectorRuntime'
+import { KeybindSettings } from './KeybindSettings'
+import type { ReadingKeybindSettings } from '../page/keybindings'
 import type {
   CommunitySourceDef,
   ConnectorStatus,
   ReadingItem,
-  ReadingProvider,
 } from '../page/types'
 
 export function ReadingSidebar({
@@ -14,13 +15,14 @@ export function ReadingSidebar({
   message,
   connectors,
   connectorItems,
+  keybindsOpen,
+  keybinds,
   onOpenCatalog,
+  onToggleKeybinds,
+  onSaveKeybinds,
   onActivate,
   onMove,
   onRemove,
-  onConnect,
-  onSyncConnectors,
-  onPollStored,
 }: {
   sourceIds: string[]
   definitions: Map<string, CommunitySourceDef>
@@ -28,13 +30,14 @@ export function ReadingSidebar({
   message: string
   connectors: UseQueryResult<ConnectorStatus[], Error>
   connectorItems: UseQueryResult<ReadingItem[], Error>
+  keybindsOpen: boolean
+  keybinds: ReadingKeybindSettings
   onOpenCatalog: () => void
+  onToggleKeybinds: () => void
+  onSaveKeybinds: (settings: ReadingKeybindSettings) => void
   onActivate: (sourceId: string) => void
   onMove: (sourceId: string, delta: -1 | 1) => void
   onRemove: (sourceId: string) => void
-  onConnect: (provider: ReadingProvider) => void
-  onSyncConnectors: () => void
-  onPollStored: () => void
 }) {
   return (
     <aside className="reading-sidebar">
@@ -42,16 +45,16 @@ export function ReadingSidebar({
         <div>
           <h1>infovore portal</h1>
         </div>
-        <button className="add-source-button" onClick={onOpenCatalog}>
-          + source
-        </button>
+        <div className="reading-sidebar-actions">
+          <button onClick={onToggleKeybinds}>keys</button>
+          <button className="add-source-button" onClick={onOpenCatalog}>
+            + source
+          </button>
+        </div>
       </header>
 
       <div className="source-manager-copy">
-        <p>
-          supports html, json and rss feeds arranged as bsp. this includes
-          feedly and gmail!
-        </p>
+        <p>supports html, json and rss feeds arranged as bsp.</p>
         <small>
           {sourceIds.length} source{sourceIds.length === 1 ? '' : 's'} active ·{' '}
           {message}
@@ -119,13 +122,14 @@ export function ReadingSidebar({
         )}
       </div>
 
-      <ConnectorRuntime
-        connectors={connectors}
-        items={connectorItems}
-        onConnect={onConnect}
-        onSync={onSyncConnectors}
-        onPollStored={onPollStored}
+      <KeybindSettings
+        open={keybindsOpen}
+        settings={keybinds}
+        onClose={onToggleKeybinds}
+        onSave={onSaveKeybinds}
       />
+
+      <ConnectorRuntime connectors={connectors} items={connectorItems} />
     </aside>
   )
 }

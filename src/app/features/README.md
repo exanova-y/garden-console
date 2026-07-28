@@ -11,3 +11,8 @@ This is the destination for application feature code.
 
 This is the only feature root. Keep frontend feature code out of `src/server`
 and backend implementations out of individual frontend feature directories.
+
+Names may intentionally mirror across the frontend and server namespaces. For
+example, `vault/page/crypto.ts` performs fail-closed browser encryption while
+`server/vault` validates and stores only encrypted envelopes. The repeated
+domain name marks a runtime boundary, not duplicate ownership.

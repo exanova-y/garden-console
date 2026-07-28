@@ -53,8 +53,11 @@ pnpm install
 corepack pnpm dev
 corepack pnpm check
 corepack pnpm build
-corepack pnpm worker:dev
 ```
+
+`pnpm dev` applies pending migrations to the local D1 database, then runs Vite
+HMR and the Cloudflare Worker API in the same local runtime. `worker:dev`
+remains an alias for that command.
 
 Deployment
 
@@ -77,7 +80,7 @@ Always run build before deploy to generate corresponding /dist folder, which is 
 4. Health: optional-login local-first HRT/medication interventions, a dedicated
    mood tab, encrypted sync, and a shared timeline. HRT curves use the
    vendored kernel from `https://hrt.mahiro.uk`; NAC calibration follows after
-   that.
+   that. ✓
 5. Reading: curated speed dial, then RSS ingestion.
 
 Pause after each stage, verify it, and update this file in the fewest useful

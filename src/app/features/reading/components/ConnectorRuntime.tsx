@@ -1,24 +1,13 @@
 import type { UseQueryResult } from '@tanstack/react-query'
-import type {
-  ConnectorStatus,
-  ReadingItem,
-  ReadingProvider,
-} from '../page/types'
+import type { ConnectorStatus, ReadingItem } from '../page/types'
 
 export function ConnectorRuntime({
   connectors,
   items,
-  onConnect,
-  onSync,
-  onPollStored,
 }: {
   connectors: UseQueryResult<ConnectorStatus[], Error>
   items: UseQueryResult<ReadingItem[], Error>
-  onConnect: (provider: ReadingProvider) => void
-  onSync: () => void
-  onPollStored: () => void
 }) {
-  const connectorData = connectors.data ?? []
   const connectorState =
     connectors.fetchStatus === 'fetching'
       ? 'polling'
@@ -33,30 +22,8 @@ export function ConnectorRuntime({
         : items.status
 
   return (
-    <>
-      <div className="connector-strip">
-        {(['google', 'feedly'] as const).map((provider) => {
-          const connector = connectorData.find(
-            (entry) => entry.provider === provider,
-          )
-          return (
-            <button
-              className={connector ? 'connector connected' : 'connector'}
-              key={provider}
-              onClick={() => onConnect(provider)}
-            >
-              {provider === 'google' ? 'gmail' : 'feedly'}
-              <small>json · {connector?.status ?? 'connect'}</small>
-            </button>
-          )
-        })}
-        <button className="connector" onClick={onSync}>
-          owner sync<small>manual</small>
-        </button>
-        <button className="connector" onClick={onPollStored}>
-          stored items<small>manual poll</small>
-        </button>
-      </div>
+    <details className="connector-runtime">
+      <summary>connector runtime</summary>
       <pre data-connector-runtime>
         {JSON.stringify(
           {
@@ -79,6 +46,6 @@ export function ConnectorRuntime({
           2,
         )}
       </pre>
-    </>
+    </details>
   )
 }

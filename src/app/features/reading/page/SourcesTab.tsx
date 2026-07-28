@@ -4,19 +4,19 @@ import {
   loadReadingItems,
   loadCommunitySources,
   loadConnectorStatus,
-  pollConnectors,
 } from './api'
 import { useQuery } from '@tanstack/react-query'
+import { circularIndex, DEFAULT_BSP_RECT, type BspRect } from './reader-state'
 import {
-  buildBspLayout,
-  circularIndex,
-  moveSource,
-  sanitizeSourceIds,
-} from './reader-state'
+  eventKey,
+  findReadingKeybindAction,
+  loadReadingKeybindSettings,
+  saveReadingKeybindSettings,
+  type ReadingKeybindSettings,
+} from './keybindings'
 import { useReadingStore } from './reading-store'
 import { useCommunitySourcePanels } from './source-queries'
 import { ReadingSidebar } from '../components/ReadingSidebar'
-import { ShortcutHelp } from '../components/ShortcutHelp'
 import { SourceCatalog } from '../components/SourceCatalog'
 import { SourceCanvas } from '../components/SourceCanvas'
 import type { CommunitySourceDef, ReadingItem, ReadingProvider } from './types'
@@ -30,8 +30,11 @@ function isTyping(target: EventTarget | null): boolean {
 }
 
 export function SourcesTab() {
+  const tree = useReadingStore((state) => state.tree)
   const sourceIds = useReadingStore((state) => state.sourceIds)
-  const setSourceIds = useReadingStore((state) => state.setSourceIds)
+  const setAvailableSources = useReadingStore(
+    (state) => state.setAvailableSources,
+  )
   const activeSourceId = useReadingStore((state) => state.activeSourceId)
   const setActiveSourceId = useReadingStore((state) => state.setActiveSourceId)
   const activeItemBySource = useReadingStore(
@@ -40,10 +43,16 @@ export function SourcesTab() {
   const setActiveItem = useReadingStore((state) => state.setActiveItem)
   const toggleStoredSource = useReadingStore((state) => state.toggleSource)
   const removeStoredSource = useReadingStore((state) => state.removeSource)
-  const moveStoredSource = useReadingStore((state) => state.moveActiveSource)
+  const moveStoredSource = useReadingStore((state) => state.moveSource)
+  const moveActiveStoredSource = useReadingStore(
+    (state) => state.moveActiveSource,
+  )
   const [showAdd, setShowAdd] = useState(false)
-  const [showHelp, setShowHelp] = useState(false)
+  const [showKeybinds, setShowKeybinds] = useState(false)
+  const [keybinds, setKeybinds] = useState(loadReadingKeybindSettings)
   const [message, setMessage] = useState('source tiles / ready')
+  const [canvasRect, setCanvasRect] = useState<BspRect>(DEFAULT_BSP_RECT)
+  const canvasRef = useRef<HTMLDivElement>(null)
   const keySequence = useRef({ key: '', at: 0 })
   const { panels, refreshSource, refreshAll } =
     useCommunitySourcePanels(sourceIds)
@@ -72,7 +81,6 @@ export function SourcesTab() {
     () => new Map(catalog.map((source) => [source.id, source])),
     [catalog],
   )
-  const tree = useMemo(() => buildBspLayout(sourceIds), [sourceIds])
   const activePanel = activeSourceId ? panels[activeSourceId] : undefined
   const activeItemIndex = activeSourceId
     ? (activeItemBySource[activeSourceId] ?? 0)
@@ -81,6 +89,31 @@ export function SourcesTab() {
   const activeUrl =
     activeItem?.url ??
     (activeSourceId ? definitions.get(activeSourceId)?.homepage : null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const measure = () => {
+      const bounds = canvas.getBoundingClientRect()
+      if (!(bounds.width > 0) || !(bounds.height > 0)) return
+      setCanvasRect((current) =>
+        current.width === bounds.width && current.height === bounds.height
+          ? current
+          : { x: 0, y: 0, width: bounds.width, height: bounds.height },
+      )
+    }
+
+    measure()
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', measure)
+      return () => window.removeEventListener('resize', measure)
+    }
+
+    const observer = new ResizeObserver(measure)
+    observer.observe(canvas)
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     if (!activeSourceId) return
@@ -98,17 +131,11 @@ export function SourcesTab() {
 
   useEffect(() => {
     if (!catalogQuery.data?.length) return
-    setSourceIds((current) =>
-      sanitizeSourceIds(
-        current,
-        catalogQuery.data!.map((source) => source.id),
-        ['hackernews'],
-      ),
-    )
-  }, [catalogQuery.data, setSourceIds])
+    setAvailableSources(catalogQuery.data.map((source) => source.id))
+  }, [catalogQuery.data, setAvailableSources])
 
   function openCatalog() {
-    setShowHelp(false)
+    setShowKeybinds(false)
     setShowAdd(true)
   }
 
@@ -118,7 +145,7 @@ export function SourcesTab() {
 
   function toggleSource(sourceId: string) {
     const sourceName = definitions.get(sourceId)?.name ?? sourceId
-    const added = toggleStoredSource(sourceId)
+    const added = toggleStoredSource(sourceId, canvasRect)
     setMessage(`${added ? 'added' : 'removed'} ${sourceName}`)
   }
 
@@ -129,9 +156,9 @@ export function SourcesTab() {
 
   function moveActiveSource(delta: -1 | 1) {
     if (!activeSourceId) return
-    const next = moveSource(sourceIds, activeSourceId, delta)
-    if (next === sourceIds) return
-    moveStoredSource(delta)
+    const index = sourceIds.indexOf(activeSourceId)
+    if (index + delta < 0 || index + delta >= sourceIds.length) return
+    moveActiveStoredSource(delta)
     setMessage(
       `moved ${definitions.get(activeSourceId)?.name ?? activeSourceId}`,
     )
@@ -173,92 +200,107 @@ export function SourcesTab() {
     }
   }
 
-  async function syncOwnerStream() {
-    try {
-      setMessage('polling connector sources')
-      await pollConnectors()
-      await Promise.all([ownerItems.refetch(), connectorQuery.refetch()])
-      setMessage('connector poll complete')
-    } catch (error) {
-      setMessage((error as Error).message)
-    }
-  }
-
-  async function pollStoredOwnerItems() {
-    setMessage('polling stored connector items')
-    await ownerItems.refetch()
-    setMessage('stored connector poll complete')
+  function saveKeybinds(settings: ReadingKeybindSettings) {
+    saveReadingKeybindSettings(settings)
+    setKeybinds(settings)
+    setMessage(`reader keybinds ${settings.enabled ? 'enabled' : 'disabled'}`)
   }
 
   useEffect(() => {
     function keydown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         if (showAdd) closeCatalog()
-        if (showHelp) setShowHelp(false)
+        if (showKeybinds) setShowKeybinds(false)
         return
       }
-      if (showAdd || showHelp) return
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      if (
+        !showAdd &&
+        !showKeybinds &&
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === 'k'
+      ) {
         event.preventDefault()
         openCatalog()
         return
       }
+      if (showAdd || showKeybinds || !keybinds.enabled) return
       if (isTyping(event.target)) return
 
       const now = Date.now()
+      const key = eventKey(event)
       const prior =
-        now - keySequence.current.at < 800 ? keySequence.current.key : ''
-      const sequence = `${prior}${event.key}`
-      keySequence.current = { key: event.key, at: now }
+        key.length === 1 && now - keySequence.current.at < 800
+          ? keySequence.current.key
+          : ''
+      const sequence = `${prior}${key}`
+      const action = findReadingKeybindAction(keybinds, key, sequence)
 
-      if (sequence === 'gg') {
-        event.preventDefault()
-        activateItem(0)
-        keySequence.current = { key: '', at: 0 }
-      } else if (sequence === 'yy' && activeUrl) {
-        event.preventDefault()
-        void navigator.clipboard
-          .writeText(activeUrl)
-          .then(() => setMessage('url copied'))
-        keySequence.current = { key: '', at: 0 }
-      } else if (event.key === 'g' || event.key === 'y') {
-        event.preventDefault()
-      } else if (event.key === '/') {
-        event.preventDefault()
-        openCatalog()
-      } else if (event.key === '?') {
-        event.preventDefault()
-        setShowHelp(true)
-      } else if (event.key === 'j') {
-        event.preventDefault()
-        activateItem(activeItemIndex + 1)
-      } else if (event.key === 'k') {
-        event.preventDefault()
-        activateItem(activeItemIndex - 1)
-      } else if (event.key === 'G') {
-        event.preventDefault()
-        activateItem((activePanel?.items.length ?? 1) - 1)
-      } else if (event.key === 'J') {
-        event.preventDefault()
-        activateSource(-1)
-      } else if (event.key === 'K') {
-        event.preventDefault()
-        activateSource(1)
-      } else if (event.key === '[') {
-        event.preventDefault()
-        moveActiveSource(-1)
-      } else if (event.key === ']') {
-        event.preventDefault()
-        moveActiveSource(1)
-      } else if (event.key === 'Enter' || event.key === 'f') {
-        event.preventDefault()
-        openActiveItem()
-      } else if (event.key === 'r' && activeSourceId) {
-        event.preventDefault()
-        refreshOne(activeSourceId)
-      } else if (event.key === 'R') {
-        event.preventDefault()
-        refreshVisibleSources()
+      if (!action) {
+        const startsSequence = Object.values(keybinds.bindings).some(
+          (binding) =>
+            key.length === 1 &&
+            binding.length > key.length &&
+            binding.startsWith(key),
+        )
+        keySequence.current = startsSequence
+          ? { key, at: now }
+          : { key: '', at: 0 }
+        if (startsSequence) event.preventDefault()
+        return
+      }
+
+      event.preventDefault()
+      keySequence.current = { key: '', at: 0 }
+
+      switch (action) {
+        case 'openHovered':
+          openActiveItem()
+          break
+        case 'closeHovered':
+          if (activeSourceId) removeSource(activeSourceId)
+          break
+        case 'nextItem':
+          activateItem(activeItemIndex + 1)
+          break
+        case 'previousItem':
+          activateItem(activeItemIndex - 1)
+          break
+        case 'firstItem':
+          activateItem(0)
+          break
+        case 'lastItem':
+          activateItem((activePanel?.items.length ?? 1) - 1)
+          break
+        case 'previousSource':
+          activateSource(-1)
+          break
+        case 'nextSource':
+          activateSource(1)
+          break
+        case 'moveSourceEarlier':
+          moveActiveSource(-1)
+          break
+        case 'moveSourceLater':
+          moveActiveSource(1)
+          break
+        case 'copyUrl':
+          if (activeUrl)
+            void navigator.clipboard
+              .writeText(activeUrl)
+              .then(() => setMessage('url copied'))
+          break
+        case 'pollSource':
+          if (activeSourceId) refreshOne(activeSourceId)
+          break
+        case 'pollAll':
+          refreshVisibleSources()
+          break
+        case 'openCatalog':
+          openCatalog()
+          break
+        case 'showKeybinds':
+          setShowKeybinds(true)
+          break
       }
     }
     window.addEventListener('keydown', keydown)
@@ -274,15 +316,14 @@ export function SourcesTab() {
         message={message}
         connectors={connectorQuery}
         connectorItems={ownerItems}
+        keybindsOpen={showKeybinds}
+        keybinds={keybinds}
         onOpenCatalog={openCatalog}
+        onToggleKeybinds={() => setShowKeybinds((open) => !open)}
+        onSaveKeybinds={saveKeybinds}
         onActivate={setActiveSourceId}
-        onMove={(sourceId, delta) =>
-          setSourceIds(moveSource(sourceIds, sourceId, delta))
-        }
+        onMove={moveStoredSource}
         onRemove={removeSource}
-        onConnect={(provider) => void connect(provider)}
-        onSyncConnectors={() => void syncOwnerStream()}
-        onPollStored={() => void pollStoredOwnerItems()}
       />
 
       <main className="reading-sources">
@@ -293,10 +334,12 @@ export function SourcesTab() {
           <div className="source-toolbar-actions">
             <button onClick={openCatalog}>add</button>
             <button onClick={refreshVisibleSources}>poll all</button>
-            <button onClick={() => setShowHelp(true)}>?</button>
+            <button onClick={() => setShowKeybinds((open) => !open)}>
+              keys
+            </button>
           </div>
         </header>
-        <div className="bsp-canvas">
+        <div className="bsp-canvas" ref={canvasRef}>
           {tree ? (
             <SourceCanvas
               node={tree}
@@ -327,6 +370,7 @@ export function SourcesTab() {
         catalog={catalog}
         sourceIds={sourceIds}
         panels={panels}
+        connectors={connectorQuery.data ?? []}
         state={
           catalogQuery.fetchStatus === 'fetching' ||
           catalogQuery.status === 'pending'
@@ -338,9 +382,9 @@ export function SourcesTab() {
         error={catalogQuery.error?.message ?? null}
         onRetry={() => void catalogQuery.refetch()}
         onToggle={toggleSource}
+        onConnect={(provider) => void connect(provider)}
         onClose={closeCatalog}
       />
-      <ShortcutHelp open={showHelp} onClose={() => setShowHelp(false)} />
     </section>
   )
 }

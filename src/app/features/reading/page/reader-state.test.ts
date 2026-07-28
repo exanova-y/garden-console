@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import type { CommunitySourceDef } from './types'
 import {
-  buildBspLayout,
+  bspLeafIds,
+  buildBspTree,
   circularIndex,
   filterCommunitySources,
+  findBspLeafRect,
+  insertBspLeaf,
   moveSource,
+  removeBspLeaf,
   sanitizeSourceIds,
+  swapBspLeaves,
 } from './reader-state'
 
 const READING_LIST: CommunitySourceDef[] = [
@@ -41,23 +46,94 @@ describe('reader source state', () => {
     ).toEqual(['producthunt', 'hackernews'])
   })
 
-  it('builds a balanced alternating BSP tree', () => {
-    expect(buildBspLayout(['a', 'b', 'c', 'd'])).toEqual({
+  it('builds a persistent longest-side BSP tree in insertion order', () => {
+    expect(buildBspTree(['a', 'b', 'c', 'd'])).toEqual({
       kind: 'split',
-      direction: 'columns',
-      first: {
-        kind: 'split',
-        direction: 'rows',
-        first: { kind: 'leaf', sourceId: 'a' },
-        second: { kind: 'leaf', sourceId: 'b' },
-      },
+      axis: 'vertical',
+      ratio: 0.5,
+      first: { kind: 'leaf', sourceId: 'a' },
       second: {
         kind: 'split',
-        direction: 'rows',
-        first: { kind: 'leaf', sourceId: 'c' },
-        second: { kind: 'leaf', sourceId: 'd' },
+        axis: 'horizontal',
+        ratio: 0.5,
+        first: { kind: 'leaf', sourceId: 'b' },
+        second: {
+          kind: 'split',
+          axis: 'vertical',
+          ratio: 0.5,
+          first: { kind: 'leaf', sourceId: 'c' },
+          second: { kind: 'leaf', sourceId: 'd' },
+        },
       },
     })
+  })
+
+  it('fills the root with one source and splits the focused leaf by its longest side', () => {
+    const first = insertBspLeaf(null, null, 'a', {
+      x: 0,
+      y: 0,
+      width: 1200,
+      height: 700,
+    })
+    expect(first).toEqual({ kind: 'leaf', sourceId: 'a' })
+
+    const second = insertBspLeaf(first, 'a', 'b', {
+      x: 0,
+      y: 0,
+      width: 1200,
+      height: 700,
+    })
+    expect(second).toMatchObject({
+      kind: 'split',
+      axis: 'vertical',
+      ratio: 0.5,
+    })
+
+    const third = insertBspLeaf(second, 'b', 'c', {
+      x: 0,
+      y: 0,
+      width: 1200,
+      height: 700,
+    })
+    expect(third).toMatchObject({
+      second: {
+        kind: 'split',
+        axis: 'horizontal',
+      },
+    })
+    expect(
+      findBspLeafRect(third, 'a', {
+        x: 0,
+        y: 0,
+        width: 1200,
+        height: 700,
+      }),
+    ).toEqual({
+      x: 0,
+      y: 0,
+      width: 600,
+      height: 700,
+    })
+  })
+
+  it('promotes a sibling when a source is removed', () => {
+    const tree = buildBspTree(['a', 'b', 'c'])
+    const next = removeBspLeaf(tree, 'c')
+    expect(bspLeafIds(next)).toEqual(['a', 'b'])
+    expect(next).toEqual({
+      kind: 'split',
+      axis: 'vertical',
+      ratio: 0.5,
+      first: { kind: 'leaf', sourceId: 'a' },
+      second: { kind: 'leaf', sourceId: 'b' },
+    })
+  })
+
+  it('reorders leaf payloads without rebuilding split topology', () => {
+    const tree = buildBspTree(['a', 'b', 'c'])
+    const next = swapBspLeaves(tree, 'a', 'b')
+    expect(bspLeafIds(next)).toEqual(['b', 'a', 'c'])
+    expect(next && next.kind === 'split' ? next.axis : null).toBe('vertical')
   })
 
   it('moves a source without mutating the input order', () => {

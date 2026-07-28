@@ -1,20 +1,42 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { GrainGradient } from '@paper-design/shaders-react'
 import wallpaperUrl from '../../djmax-respect-v.png'
 import { HealthConsole } from './features/health/page/HealthConsole'
 import { ReadingPage } from './features/reading/page/ReadingPage'
+import {
+  workspaceFromUrl,
+  workspacePath,
+  type Workspace,
+} from './workspace-route'
 
-type Workspace = 'health' | 'reading'
+function workspaceFromLocation(): Workspace {
+  return workspaceFromUrl(window.location.pathname, window.location.search)
+}
 
 export function App() {
-  const [workspace, setWorkspace] = useState<Workspace>(() =>
-    new URLSearchParams(window.location.search).get('workspace') === 'reading'
-      ? 'reading'
-      : 'health',
-  )
+  const [workspace, setWorkspace] = useState<Workspace>(workspaceFromLocation)
   const reduceMotion = window.matchMedia(
     '(prefers-reduced-motion: reduce)',
   ).matches
+
+  useEffect(() => {
+    if (
+      workspace === 'reading' &&
+      window.location.pathname !== '/r' &&
+      new URLSearchParams(window.location.search).get('workspace') === 'reading'
+    )
+      window.history.replaceState({}, '', '/r')
+
+    const handlePopState = () => setWorkspace(workspaceFromLocation())
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [workspace])
+
+  function navigateWorkspace(next: Workspace) {
+    if (next === workspace) return
+    window.history.pushState({}, '', workspacePath(next))
+    setWorkspace(next)
+  }
 
   return (
     <div className="scene">
@@ -47,7 +69,7 @@ export function App() {
                 ? 'activity-button active'
                 : 'activity-button'
             }
-            onClick={() => setWorkspace('health')}
+            onClick={() => navigateWorkspace('health')}
             title="Health"
           >
             H
@@ -58,7 +80,7 @@ export function App() {
                 ? 'activity-button active'
                 : 'activity-button'
             }
-            onClick={() => setWorkspace('reading')}
+            onClick={() => navigateWorkspace('reading')}
             title="Reading"
           >
             R
