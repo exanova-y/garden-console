@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { GrainGradient } from '@paper-design/shaders-react'
 import wallpaperUrl from '../../djmax-respect-v.png'
-import { HealthConsole } from '../features/health/HealthConsole'
-import { ReadingConsole } from '../features/reading/ReadingConsole'
+import { HealthConsole } from './features/health/page/HealthConsole'
+import { ReadingPage } from './features/reading/page/ReadingPage'
 
 type Workspace = 'health' | 'reading'
 
@@ -75,7 +75,7 @@ export function App() {
           {workspace === 'health' ? (
             <HealthConsole userId="guest" guest />
           ) : (
-            <ReadingConsole />
+            <ReadingPage />
           )}
 
           {workspace === 'health' && (

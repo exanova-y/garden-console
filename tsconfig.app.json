@@ -16,17 +16,6 @@
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": [
-    "src/app",
-    "src/features/health",
-    "src/features/reading/ReadingConsole.tsx",
-    "src/features/reading/client.ts",
-    "src/features/reading/catalog.ts",
-    "src/features/reading/interests.ts",
-    "src/features/reading/types.ts",
-    "src/features/identity/AuthGate.tsx",
-    "src/features/identity/client.ts",
-    "src/features/vault/crypto.ts",
-    "src/vite-env.d.ts"
-  ]
+  "include": ["src/app", "src/vite-env.d.ts"],
+  "exclude": ["src/app/features/server"]
 }

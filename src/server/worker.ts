@@ -1,7 +1,7 @@
 import type { Env } from './env'
-import { handleIdentity } from '../features/identity'
-import { handleVault, handlePasskeys } from '../features/vault'
-import { handleReading, refreshReading } from '../features/reading'
+import { handleIdentity } from '../app/features/server/identity'
+import { handleVault, handlePasskeys } from '../app/features/server/vault'
+import { handleReading } from '../app/features/server/reading'
 
 function json(data: unknown, init?: ResponseInit): Response {
   const headers = new Headers(init?.headers)
@@ -65,8 +65,5 @@ export default {
       return json({ error: 'Not found' }, { status: 404 })
 
     return env.ASSETS.fetch(request)
-  },
-  async scheduled(_controller, env, ctx): Promise<void> {
-    ctx.waitUntil(refreshReading(env))
   },
 } satisfies ExportedHandler<Env>

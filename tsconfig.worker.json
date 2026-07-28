@@ -11,19 +11,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": [
-    "src/server",
-    "src/features/identity/index.ts",
-    "src/features/identity/routes.ts",
-    "src/features/identity/validation.ts",
-    "src/features/identity/totp.ts",
-    "src/features/identity/rate-limit.ts",
-    "src/features/vault",
-    "src/features/reading/index.ts",
-    "src/features/reading/routes.ts",
-    "src/features/reading/catalog.ts",
-    "src/features/reading/source-fetch.ts",
-    "src/features/reading/server-crypto.ts",
-    "src/features/reading/types.ts"
-  ]
+  "include": ["src/server", "src/app/features/server"]
 }

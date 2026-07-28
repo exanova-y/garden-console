@@ -22,9 +22,6 @@ head_sampling_rate = 0.1
 #   GOOGLE_CLIENT_SECRET
 #   FEEDLY_CLIENT_SECRET
 
-[triggers]
-crons = ["*/30 * * * *"]
-
 # Custom domain on the adiabatic.garden Cloudflare zone (replaces Vercel).
 [[routes]]
 pattern = "peacesign.adiabatic.garden"

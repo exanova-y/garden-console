@@ -1,8 +1,8 @@
 # PEACESIGN!!!!!!!!!!!!!!!!!
 
-*The red sky fading in the distance*      
-*The peace sign burning in a vision from God*    
-*Please help me*   
+_The red sky fading in the distance_<br>
+_The peace sign burning in a vision from God_<br>
+_Please help me_
 
 ![](peacesign.png)
 Tracking HRT, meds, mood and an infovore news aggregator at `peacesign.adiabatic.garden`.
@@ -15,8 +15,12 @@ encrypted in the browser before cloud backup.
 ## Boundaries
 
 - `src/app` composes the application shell and navigation.
-- `src/features` contains vertical product domains.
-- `src/server` contains Worker routes, jobs, and storage adapters.
+- `src/app/features/<feature>` contains frontend product domains, organized by
+  `page` and feature-local `components`.
+- `src/app/features/server/<feature>` contains Worker routes, integrations, and
+  D1 access, while `src/app/features/shared` is reserved for proven cross-feature
+  frontend code.
+- `src/server` contains the Worker entry point and environment contract.
 - `migrations` contains ordered, non-destructive D1 migrations.
 - `content` contains human-maintained inputs such as the curated OPML file.
 - `research` will contain reproducible PK fitting work when modeling begins.
@@ -53,6 +57,7 @@ corepack pnpm worker:dev
 ```
 
 Deployment
+
 ```
 pnpm build
 npx wrangler deploy
