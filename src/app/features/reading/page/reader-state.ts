@@ -88,12 +88,32 @@ export function filterCommunitySources(
   catalog: CommunitySourceDef[],
   query: string,
 ): CommunitySourceDef[] {
-  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  const normalize = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/^https?:\/\//, '')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim()
+  const terms = normalize(query).split(/\s+/).filter(Boolean)
   if (terms.length === 0) return catalog
 
   return catalog.filter((source) => {
-    const searchable =
-      `${source.name} ${source.category} ${source.blurb} ${source.kind}`.toLowerCase()
-    return terms.every((term) => searchable.includes(term))
+    const metadata = [
+      source.id,
+      source.name,
+      source.category,
+      source.blurb,
+      source.kind,
+      source.adapter,
+      source.url,
+      source.homepage,
+    ]
+    const searchable = normalize(metadata.join(' '))
+    const compactSearchable = searchable.replace(/\s+/g, '')
+    return terms.every(
+      (term) =>
+        searchable.includes(term) ||
+        compactSearchable.includes(term.replace(/\s+/g, '')),
+    )
   })
 }

@@ -8,6 +8,9 @@ export function SourceCatalog({
   catalog,
   sourceIds,
   panels,
+  state,
+  error,
+  onRetry,
   onToggle,
   onClose,
 }: {
@@ -15,6 +18,9 @@ export function SourceCatalog({
   catalog: CommunitySourceDef[]
   sourceIds: string[]
   panels: Record<string, SourcePanelState>
+  state: 'loading' | 'ready' | 'error'
+  error: string | null
+  onRetry: () => void
   onToggle: (sourceId: string) => void
   onClose: () => void
 }) {
@@ -75,8 +81,7 @@ export function SourceCatalog({
       >
         <header className="source-modal-head">
           <div>
-            <p className="section-label">[ reading list ]</p>
-            <h2>add source</h2>
+            <p className="section-label">[ add source ]</p>
           </div>
           <button onClick={onClose}>done</button>
         </header>
@@ -101,11 +106,20 @@ export function SourceCatalog({
           id="community-source-results"
           role="listbox"
         >
-          {filteredCatalog.length === 0 ? (
+          {state === 'loading' ? (
             <div className="catalog-empty">
-              <strong>no reading-list match</strong>
-              <span>custom sources are planned, but not wired yet.</span>
-              <button disabled>+ custom source / coming later</button>
+              <strong>loading reading list</strong>
+            </div>
+          ) : state === 'error' ? (
+            <div className="catalog-empty">
+              <strong>reading list unavailable</strong>
+              <span>{error}</span>
+              <button onClick={onRetry}>retry</button>
+            </div>
+          ) : filteredCatalog.length === 0 ? (
+            <div className="catalog-empty">
+              <strong>no result</strong>
+              <button disabled>+ custom source (not implemented)</button>
             </div>
           ) : (
             filteredCatalog.map((source, index) => {

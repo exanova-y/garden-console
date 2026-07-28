@@ -135,6 +135,11 @@ describe('SourcesTab manual runtime flow', () => {
 
     expect(await screen.findByText(/not polled/)).toBeVisible()
     expect(api.loadCommunityItems).not.toHaveBeenCalled()
+    await waitFor(() => {
+      expect(
+        document.querySelector('[data-connector-runtime]'),
+      ).toHaveTextContent('"state": "not_polled"')
+    })
 
     await user.click(screen.getByTitle('Poll source'))
 
@@ -151,7 +156,7 @@ describe('SourcesTab manual runtime flow', () => {
     const search = screen.getByRole('textbox', {
       name: 'Search community sources',
     })
-    await user.type(search, 'product rss')
+    await user.type(search, 'producthunt')
     await user.keyboard('{Enter}')
 
     expect(
@@ -175,6 +180,23 @@ describe('SourcesTab manual runtime flow', () => {
       localStorage.getItem(READING_PREFERENCES_KEY) ?? '{}',
     ) as { state?: { sourceIds?: string[] } }
     expect(persisted.state?.sourceIds).toEqual(['hackernews', 'producthunt'])
+  })
+
+  it('shows catalog loading failures and retries instead of reporting no result', async () => {
+    const user = userEvent.setup()
+    api.loadCommunitySources.mockRejectedValueOnce(
+      new Error('catalog unavailable'),
+    )
+    renderTab()
+
+    fireEvent.keyDown(window, { key: '/' })
+    expect(await screen.findByText('reading list unavailable')).toBeVisible()
+    expect(screen.getByText('catalog unavailable')).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'retry' }))
+    expect((await screen.findAllByText('Hacker News')).length).toBeGreaterThan(
+      0,
+    )
   })
 
   it('polls all visible panels and navigates them with shortcuts', async () => {

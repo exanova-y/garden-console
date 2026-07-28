@@ -19,12 +19,7 @@ import { ReadingSidebar } from '../components/ReadingSidebar'
 import { ShortcutHelp } from '../components/ShortcutHelp'
 import { SourceCatalog } from '../components/SourceCatalog'
 import { SourceCanvas } from '../components/SourceCanvas'
-import type {
-  CommunitySourceDef,
-  ConnectorStatus,
-  ReadingItem,
-  ReadingProvider,
-} from './types'
+import type { CommunitySourceDef, ReadingItem, ReadingProvider } from './types'
 
 function isTyping(target: EventTarget | null): boolean {
   return (
@@ -46,14 +41,24 @@ export function SourcesTab() {
   const toggleStoredSource = useReadingStore((state) => state.toggleSource)
   const removeStoredSource = useReadingStore((state) => state.removeSource)
   const moveStoredSource = useReadingStore((state) => state.moveActiveSource)
-  const [catalog, setCatalog] = useState<CommunitySourceDef[]>([])
-  const [connectors, setConnectors] = useState<ConnectorStatus[]>([])
   const [showAdd, setShowAdd] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
   const [message, setMessage] = useState('source tiles / ready')
   const keySequence = useRef({ key: '', at: 0 })
   const { panels, refreshSource, refreshAll } =
     useCommunitySourcePanels(sourceIds)
+  const catalogQuery = useQuery<CommunitySourceDef[]>({
+    queryKey: ['reading', 'community-sources'],
+    queryFn: loadCommunitySources,
+    staleTime: Infinity,
+    retry: false,
+  })
+  const connectorQuery = useQuery({
+    queryKey: ['reading', 'connectors'],
+    queryFn: loadConnectorStatus,
+    staleTime: Infinity,
+    retry: false,
+  })
   const ownerItems = useQuery<ReadingItem[]>({
     queryKey: ['reading', 'connector-items'],
     queryFn: loadReadingItems,
@@ -61,6 +66,7 @@ export function SourcesTab() {
     staleTime: Infinity,
     retry: false,
   })
+  const catalog = catalogQuery.data ?? []
 
   const definitions = useMemo(
     () => new Map(catalog.map((source) => [source.id, source])),
@@ -91,30 +97,15 @@ export function SourcesTab() {
   }, [activeItemIndex, activePanel?.items.length, activeSourceId])
 
   useEffect(() => {
-    let cancelled = false
-    loadCommunitySources()
-      .then((sources) => {
-        if (!cancelled && sources.length) {
-          setCatalog(sources)
-          setSourceIds((current) =>
-            sanitizeSourceIds(
-              current,
-              sources.map((source) => source.id),
-              ['hackernews'],
-            ),
-          )
-        }
-      })
-      .catch(() => undefined)
-    loadConnectorStatus()
-      .then((status) => {
-        if (!cancelled) setConnectors(status)
-      })
-      .catch(() => undefined)
-    return () => {
-      cancelled = true
-    }
-  }, [])
+    if (!catalogQuery.data?.length) return
+    setSourceIds((current) =>
+      sanitizeSourceIds(
+        current,
+        catalogQuery.data!.map((source) => source.id),
+        ['hackernews'],
+      ),
+    )
+  }, [catalogQuery.data, setSourceIds])
 
   function openCatalog() {
     setShowHelp(false)
@@ -186,7 +177,7 @@ export function SourcesTab() {
     try {
       setMessage('polling connector sources')
       await pollConnectors()
-      await ownerItems.refetch()
+      await Promise.all([ownerItems.refetch(), connectorQuery.refetch()])
       setMessage('connector poll complete')
     } catch (error) {
       setMessage((error as Error).message)
@@ -281,7 +272,7 @@ export function SourcesTab() {
         definitions={definitions}
         activeSourceId={activeSourceId}
         message={message}
-        connectors={connectors}
+        connectors={connectorQuery}
         connectorItems={ownerItems}
         onOpenCatalog={openCatalog}
         onActivate={setActiveSourceId}
@@ -336,6 +327,16 @@ export function SourcesTab() {
         catalog={catalog}
         sourceIds={sourceIds}
         panels={panels}
+        state={
+          catalogQuery.fetchStatus === 'fetching' ||
+          catalogQuery.status === 'pending'
+            ? 'loading'
+            : catalogQuery.isError
+              ? 'error'
+              : 'ready'
+        }
+        error={catalogQuery.error?.message ?? null}
+        onRetry={() => void catalogQuery.refetch()}
         onToggle={toggleSource}
         onClose={closeCatalog}
       />

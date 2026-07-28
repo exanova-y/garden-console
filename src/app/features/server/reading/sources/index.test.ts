@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { READING_LIST } from '../reading-list'
 import { fetchCommunityItems, normalizeHackerNews, parseDate } from '.'
 
 afterEach(() => {
@@ -6,6 +7,42 @@ afterEach(() => {
 })
 
 describe('community source normalization', () => {
+  it('exposes the curated community reading list', () => {
+    expect(
+      READING_LIST.map(({ id, kind, adapter, url }) => ({
+        id,
+        kind,
+        adapter,
+        url,
+      })),
+    ).toEqual([
+      {
+        id: 'hackernews',
+        kind: 'json',
+        adapter: 'hackernews',
+        url: 'https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage=30',
+      },
+      {
+        id: 'producthunt',
+        kind: 'rss',
+        adapter: 'rss-atom',
+        url: 'https://www.producthunt.com/feed',
+      },
+      {
+        id: 'scottaaronson',
+        kind: 'rss',
+        adapter: 'rss-atom',
+        url: 'https://scottaaronson.blog/?feed=atom',
+      },
+      {
+        id: 'ncase',
+        kind: 'rss',
+        adapter: 'rss-atom',
+        url: 'https://blog.ncase.me/feed.xml',
+      },
+    ])
+  })
+
   it('normalizes and orders Hacker News API hits', () => {
     const items = normalizeHackerNews({
       hits: [

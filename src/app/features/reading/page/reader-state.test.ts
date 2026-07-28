@@ -79,6 +79,21 @@ describe('reader source state', () => {
         (source) => source.id,
       ),
     ).toEqual(['producthunt'])
+    expect(
+      filterCommunitySources(READING_LIST, 'hackernews').map(
+        (source) => source.id,
+      ),
+    ).toEqual(['hackernews'])
+    expect(
+      filterCommunitySources(READING_LIST, 'news.ycombinator.com').map(
+        (source) => source.id,
+      ),
+    ).toEqual(['hackernews'])
+    expect(
+      filterCommunitySources(READING_LIST, 'example.com/feed').map(
+        (source) => source.id,
+      ),
+    ).toEqual(['producthunt'])
     expect(filterCommunitySources(READING_LIST, 'not present')).toEqual([])
   })
 })

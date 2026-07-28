@@ -26,7 +26,7 @@ export function ReadingSidebar({
   definitions: Map<string, CommunitySourceDef>
   activeSourceId: string | null
   message: string
-  connectors: ConnectorStatus[]
+  connectors: UseQueryResult<ConnectorStatus[], Error>
   connectorItems: UseQueryResult<ReadingItem[], Error>
   onOpenCatalog: () => void
   onActivate: (sourceId: string) => void

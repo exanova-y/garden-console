@@ -14,6 +14,8 @@ Current community sources:
 
 - Hacker News via Algolia JSON
 - Product Hunt via its Atom feed
+- Shtetl-Optimized via Scott Aaronson's Atom feed
+- Nicky Case via the blog's XML feed
 
 The three ingestion kinds are RSS, JSON, and HTML. Atom is normalized by the
 RSS/feed getter. JSON and HTML use source-specific getters rather than assuming

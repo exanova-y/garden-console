@@ -12,17 +12,31 @@ export function ConnectorRuntime({
   onSync,
   onPollStored,
 }: {
-  connectors: ConnectorStatus[]
+  connectors: UseQueryResult<ConnectorStatus[], Error>
   items: UseQueryResult<ReadingItem[], Error>
   onConnect: (provider: ReadingProvider) => void
   onSync: () => void
   onPollStored: () => void
 }) {
+  const connectorData = connectors.data ?? []
+  const connectorState =
+    connectors.fetchStatus === 'fetching'
+      ? 'polling'
+      : connectors.status === 'pending'
+        ? 'not_loaded'
+        : connectors.status
+  const itemState =
+    items.fetchStatus === 'fetching'
+      ? 'polling'
+      : items.status === 'pending'
+        ? 'not_polled'
+        : items.status
+
   return (
     <>
       <div className="connector-strip">
         {(['google', 'feedly'] as const).map((provider) => {
-          const connector = connectors.find(
+          const connector = connectorData.find(
             (entry) => entry.provider === provider,
           )
           return (
@@ -48,10 +62,15 @@ export function ConnectorRuntime({
           {
             kind: 'json',
             abstractions: ['gmail', 'feedly'],
-            connector_status: connectors,
+            connector_status: connectors.data ?? null,
+            connector_query: {
+              state: connectorState,
+              fetch_status: connectors.fetchStatus,
+              error: connectors.error?.message ?? null,
+            },
             item_query: {
-              state:
-                items.fetchStatus === 'fetching' ? 'polling' : items.status,
+              state: itemState,
+              fetch_status: items.fetchStatus,
               error: items.error?.message ?? null,
               items: items.data ?? [],
             },
