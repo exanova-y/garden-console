@@ -455,15 +455,9 @@ a:hover {
   font-size: 0.72rem;
   line-height: 1.5;
 }
-.source-manager-copy p,
-.source-manager-copy small {
+.source-manager-copy p {
   display: block;
   margin: 0;
-}
-.source-manager-copy small {
-  margin-top: 0.55rem;
-  color: var(--lavender);
-  font-size: 0.58rem;
 }
 .source-list {
   flex: 1;

@@ -50,7 +50,6 @@ export function SourcesTab() {
   const [showAdd, setShowAdd] = useState(false)
   const [showKeybinds, setShowKeybinds] = useState(false)
   const [keybinds, setKeybinds] = useState(loadReadingKeybindSettings)
-  const [message, setMessage] = useState('source tiles / ready')
   const [canvasRect, setCanvasRect] = useState<BspRect>(DEFAULT_BSP_RECT)
   const canvasRef = useRef<HTMLDivElement>(null)
   const keySequence = useRef({ key: '', at: 0 })
@@ -144,14 +143,11 @@ export function SourcesTab() {
   }
 
   function toggleSource(sourceId: string) {
-    const sourceName = definitions.get(sourceId)?.name ?? sourceId
-    const added = toggleStoredSource(sourceId, canvasRect)
-    setMessage(`${added ? 'added' : 'removed'} ${sourceName}`)
+    toggleStoredSource(sourceId, canvasRect)
   }
 
   function removeSource(sourceId: string) {
     removeStoredSource(sourceId)
-    setMessage(`removed ${definitions.get(sourceId)?.name ?? sourceId}`)
   }
 
   function moveActiveSource(delta: -1 | 1) {
@@ -159,9 +155,6 @@ export function SourcesTab() {
     const index = sourceIds.indexOf(activeSourceId)
     if (index + delta < 0 || index + delta >= sourceIds.length) return
     moveActiveStoredSource(delta)
-    setMessage(
-      `moved ${definitions.get(activeSourceId)?.name ?? activeSourceId}`,
-    )
   }
 
   function activateSource(delta: number) {
@@ -178,13 +171,11 @@ export function SourcesTab() {
   }
 
   function refreshOne(sourceId: string) {
-    setMessage(`polling ${definitions.get(sourceId)?.name ?? sourceId}`)
     void refreshSource(sourceId)
   }
 
   function refreshVisibleSources() {
-    setMessage('polling all sources')
-    void refreshAll().then(() => setMessage('source poll complete'))
+    void refreshAll()
   }
 
   function openActiveItem() {
@@ -196,14 +187,13 @@ export function SourcesTab() {
     try {
       await beginConnector(provider)
     } catch (error) {
-      setMessage((error as Error).message)
+      console.error('Reading connector failed', error)
     }
   }
 
   function saveKeybinds(settings: ReadingKeybindSettings) {
     saveReadingKeybindSettings(settings)
     setKeybinds(settings)
-    setMessage(`reader keybinds ${settings.enabled ? 'enabled' : 'disabled'}`)
   }
 
   useEffect(() => {
@@ -284,10 +274,7 @@ export function SourcesTab() {
           moveActiveSource(1)
           break
         case 'copyUrl':
-          if (activeUrl)
-            void navigator.clipboard
-              .writeText(activeUrl)
-              .then(() => setMessage('url copied'))
+          if (activeUrl) void navigator.clipboard.writeText(activeUrl)
           break
         case 'pollSource':
           if (activeSourceId) refreshOne(activeSourceId)
@@ -313,7 +300,6 @@ export function SourcesTab() {
         sourceIds={sourceIds}
         definitions={definitions}
         activeSourceId={activeSourceId}
-        message={message}
         connectors={connectorQuery}
         connectorItems={ownerItems}
         keybindsOpen={showKeybinds}
@@ -328,15 +314,10 @@ export function SourcesTab() {
 
       <main className="reading-sources">
         <header className="source-toolbar">
-          <span>
-            {tree ? 'bsp / manual source polling' : 'bsp / empty workspace'}
-          </span>
+          <span>{tree ? 'bsp: polling mode' : 'bsp / empty workspace'}</span>
           <div className="source-toolbar-actions">
-            <button onClick={openCatalog}>add</button>
+            {/* <button onClick={openCatalog}>add</button> */}
             <button onClick={refreshVisibleSources}>poll all</button>
-            <button onClick={() => setShowKeybinds((open) => !open)}>
-              keys
-            </button>
           </div>
         </header>
         <div className="bsp-canvas" ref={canvasRef}>

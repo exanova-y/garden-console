@@ -44,7 +44,7 @@ export const READING_LIST: CommunitySourceDef[] = [
     adapter: 'rss-atom',
     url: 'https://scottaaronson.blog/?feed=atom',
     homepage: 'https://scottaaronson.blog',
-    category: 'science',
+    category: 'rat-adjacent',
     blurb: 'Scott Aaronson on quantum computing, complexity, and academia',
   },
   {
@@ -54,7 +54,7 @@ export const READING_LIST: CommunitySourceDef[] = [
     adapter: 'rss-atom',
     url: 'https://blog.ncase.me/feed.xml',
     homepage: 'https://blog.ncase.me',
-    category: 'interactive',
+    category: 'rat-adjacent',
     blurb: 'explorable explanations, systems, and learning',
   },
 ]

@@ -12,7 +12,6 @@ export function ReadingSidebar({
   sourceIds,
   definitions,
   activeSourceId,
-  message,
   connectors,
   connectorItems,
   keybindsOpen,
@@ -27,7 +26,6 @@ export function ReadingSidebar({
   sourceIds: string[]
   definitions: Map<string, CommunitySourceDef>
   activeSourceId: string | null
-  message: string
   connectors: UseQueryResult<ConnectorStatus[], Error>
   connectorItems: UseQueryResult<ReadingItem[], Error>
   keybindsOpen: boolean
@@ -43,7 +41,7 @@ export function ReadingSidebar({
     <aside className="reading-sidebar">
       <header className="reading-sidebar-head">
         <div>
-          <h1>infovore portal</h1>
+          <h1>infovore portal (work in progress)</h1>
         </div>
         <div className="reading-sidebar-actions">
           <button onClick={onToggleKeybinds}>keys</button>
@@ -54,11 +52,11 @@ export function ReadingSidebar({
       </header>
 
       <div className="source-manager-copy">
-        <p>supports html, json and rss feeds arranged as bsp.</p>
-        <small>
-          {sourceIds.length} source{sourceIds.length === 1 ? '' : 's'} active ·{' '}
-          {message}
-        </small>
+        <p>
+          supports html, json and rss feeds arranged as bsp with hotkeys to
+          maximize information ingestion. press ctrl + k to add sources.
+          references: github.com/ourongxing/newsnow
+        </p>
       </div>
 
       <div className="source-list" aria-label="Added sources">

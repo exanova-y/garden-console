@@ -13,8 +13,8 @@ function formatTimestamp(timestamp: number): string {
 }
 
 function formatUpdatedAt(timestamp: number | null): string {
-  if (!timestamp) return 'not loaded'
-  return `updated ${new Date(timestamp).toLocaleTimeString(undefined, {
+  if (!timestamp) return ''
+  return `last polled ${new Date(timestamp).toLocaleTimeString(undefined, {
     hour: '2-digit',
     minute: '2-digit',
   })}`
@@ -54,15 +54,9 @@ function SourcePanel({
     >
       <header className="source-tile-head">
         <div className="source-tile-title">
-          <span className={`source-kind source-kind-${source.kind}`}>
-            {source.kind}
-          </span>
           <div>
             <strong>{source.name}</strong>
-            <small>
-              {source.category} · {panel.items.length} links ·{' '}
-              {formatUpdatedAt(panel.updatedAt)}
-            </small>
+            <small>{formatUpdatedAt(panel.updatedAt)}</small>
           </div>
         </div>
         <div className="source-tile-actions">
@@ -101,7 +95,7 @@ function SourcePanel({
         {loading && panel.items.length === 0 ? (
           <p className="source-status">polling source…</p>
         ) : panel.status === 'idle' ? (
-          <p className="source-status">not polled · press poll</p>
+          <p className="source-status">not polled</p>
         ) : panel.items.length === 0 && !panel.error ? (
           <p className="source-status">no links returned</p>
         ) : (

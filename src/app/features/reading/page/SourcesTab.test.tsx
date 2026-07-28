@@ -170,6 +170,9 @@ describe('SourcesTab manual runtime flow', () => {
     renderTab()
 
     expect(await screen.findByText(/not polled/)).toBeVisible()
+    expect(screen.queryByText(/source active/)).toBeNull()
+    expect(screen.queryByText(/source tiles/)).toBeNull()
+    expect(screen.queryByText(/tech · 0 links/)).toBeNull()
     expect(api.loadCommunityItems).not.toHaveBeenCalled()
     await waitFor(() => {
       expect(
@@ -180,6 +183,7 @@ describe('SourcesTab manual runtime flow', () => {
     await user.click(screen.getByTitle('Poll source'))
 
     expect(await screen.findByRole('link', { name: /HN one/ })).toBeVisible()
+    expect(screen.getByText(/last polled/)).toBeVisible()
     expect(
       screen
         .getByRole('link', { name: 'HN without date' })
