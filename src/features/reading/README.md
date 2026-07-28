@@ -33,3 +33,9 @@ Keyboard interactions:
 
 The existing owner-managed Gmail and Feedly connectors remain available, but
 they are independent of the community source catalog.
+
+## Reference architecture
+
+See [NewsNow reference dataflow](./NEWSNOW_DATAFLOW.md) for the corrected
+build-time, server-cache, browser-query, and source-selection interaction flow
+that informs this reader.
